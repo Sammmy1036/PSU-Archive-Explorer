@@ -78,10 +78,10 @@ Some audio may also be embedded inside `.dat` files and can sometimes be preview
 - [WpfHexEditorControl](https://github.com/abbaye/WpfHexEditorControl)
 
 ## Whats Changed
-Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
-Application now launches center screen
-Hints are now displayed if a file cannot be opened and provides possible resolution
-.NET framework moved to 4.8
+- Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
+- Application now launches center screen
+- Hints are now displayed if a file cannot be opened and provides possible resolution
+- .NET framework moved to 4.8
 
 ---
 
