@@ -57,9 +57,40 @@ namespace psu_generic_parser
         {
             if (fileDialog.ShowDialog() == DialogResult.OK)
             {
-                this.Text = "PSU Generic Parser " + Path.GetFileName(fileDialog.FileName);
+                string fileName = fileDialog.FileName;
+                this.Text = "PSU Generic Parser " + Path.GetFileName(fileName);
                 splitContainer1.Panel2.Controls.Clear();
-                openPSUArchive(fileDialog.FileName, treeView1.Nodes);
+
+                bool success = openPSUArchive(fileName, treeView1.Nodes);
+
+                if (!success)
+                {
+                    ShowAdxSuggestion(fileName);
+                }
+            }
+        }
+
+        private void ShowAdxSuggestion(string fileName)
+        {
+            string message = "Could not load this file archive.\n\n" +
+                             "This file might be **ADX** audio format.\n\n" +
+                             "Attempt the following:\n" +
+                             "1. Rename the file with .adx at the end \n(example: myfile → myfile.adx)\n" +
+                             "2. Convert the .adx file with **VGMStream** (vgmstream-win.exe) or Audacity with the VGMStream plugin.\n\n" +
+                             "Would you like to open the folder containing this file?";
+
+            DialogResult result = MessageBox.Show(message,
+                "Unknown File Format - Possible ADX Audio",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information);
+
+            if (result == DialogResult.Yes)
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start("explorer.exe", "/select,\"" + fileName + "\"");
+                }
+                catch { }
             }
         }
 

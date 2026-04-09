@@ -1,0 +1,21 @@
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\readme.txt
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp1-eur.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp1-j.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp2-eur-aug4-2010.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp2-j.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp2-na-demo.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp2-na.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp2i-j-demo.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp1-na.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp2i-j.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\list-psp2-eur.bin
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\FPB Extractor.exe.config
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\FPB Extractor.exe
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\bin\Release\FPB Extractor.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\obj\Release\FPB Extractor.csproj.AssemblyReference.cache
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\obj\Release\FPB_Extractor.FpbExtractForm.resources
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\obj\Release\FPB_Extractor.Properties.Resources.resources
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\obj\Release\FPB Extractor.csproj.GenerateResource.cache
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\obj\Release\FPB Extractor.csproj.CoreCompileInputs.cache
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\obj\Release\FPB Extractor.exe
+C:\Users\Sammy\Downloads\tenora-works-main\FPB Extractor\obj\Release\FPB Extractor.pdb

@@ -1,0 +1,6 @@
+C:\Users\Sammy\Downloads\tenora-works-main\PSULib\bin\Release\PSULib.dll
+C:\Users\Sammy\Downloads\tenora-works-main\PSULib\bin\Release\PSULib.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\PSULib\obj\Release\PSULib.csproj.AssemblyReference.cache
+C:\Users\Sammy\Downloads\tenora-works-main\PSULib\obj\Release\PSULib.csproj.CoreCompileInputs.cache
+C:\Users\Sammy\Downloads\tenora-works-main\PSULib\obj\Release\PSULib.dll
+C:\Users\Sammy\Downloads\tenora-works-main\PSULib\obj\Release\PSULib.pdb

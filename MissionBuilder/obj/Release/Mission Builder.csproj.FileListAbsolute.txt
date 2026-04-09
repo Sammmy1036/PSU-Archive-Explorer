@@ -1,0 +1,13 @@
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\bin\Release\MissionBuilder.exe.config
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\bin\Release\MissionBuilder.exe
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\bin\Release\MissionBuilder.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\bin\Release\PSULib.dll
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\bin\Release\PSULib.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\obj\Release\Mission Builder.csproj.AssemblyReference.cache
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\obj\Release\psu_generic_parser.MissionBuilder.resources
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\obj\Release\MissionBuilder.Properties.Resources.resources
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\obj\Release\Mission Builder.csproj.GenerateResource.cache
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\obj\Release\Mission Builder.csproj.CoreCompileInputs.cache
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\obj\Release\Mission .A6A7E3C1.Up2Date
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\obj\Release\MissionBuilder.exe
+C:\Users\Sammy\Downloads\tenora-works-main\MissionBuilder\obj\Release\MissionBuilder.pdb
