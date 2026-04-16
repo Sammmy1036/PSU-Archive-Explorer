@@ -56,6 +56,7 @@ Some audio may also be embedded inside `.dat` files and can sometimes be preview
 ## Whats Changed
 - Can now read/extract archives which are identified as ADX instead of being blank
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
+- Fixes Application Not Responding when clicking large files in the tree view
 - Application now launches center screen
 - Hints are now displayed if a file cannot be opened and provides possible resolution
 - .NET framework moved to 4.8
