@@ -36,7 +36,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **XNT**   | Texture list / material mapping files (links texture slots in models to actual XVR textures) |
 | **XVR**   | Texture files (characters, environments, UI, etc.) |
 
-**Note**: Some files may appear empty when opened. This is common with **ADX** audio files. Rename the file to end with `.adx` and use **vgmstream-cli** (from [vgmstream.org](https://vgmstream.org/)) to convert it to `.wav` for preview.
+**Note**: **ADX** audio files can be converted to .wav using **vgmstream-cli** (from [vgmstream.org](https://vgmstream.org/)) for preview.
 
 To **replace** audio:
 - Convert your `.wav` to ADX using **ADX Converter & Player** (available on GameBanana: https://gamebanana.com/tools/6491).
