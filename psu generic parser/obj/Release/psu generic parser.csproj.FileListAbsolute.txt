@@ -1,0 +1,146 @@
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Resources\EBCDIC-NoSpecialChar.tbl
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Resources\EBCDIC.tbl
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\psu generic parser.exe.config
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\psu generic parser.exe
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\psu generic parser.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.Shell.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.ShellExtensions.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\PSULib.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\WPFHexaEditor.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\PSULib.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\WPFHexaEditor.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.xml
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.Shell.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.Shell.xml
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.ShellExtensions.pdb
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.ShellExtensions.xml
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\fr-CA\WPFHexaEditor.resources.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\pl-PL\WPFHexaEditor.resources.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\pt-BR\WPFHexaEditor.resources.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\ru-RU\WPFHexaEditor.resources.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\bin\Release\zh-CN\WPFHexaEditor.resources.dll
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu generic parser.csproj.AssemblyReference.cache
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ClothingFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.ActDataFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.AtkDatFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.DamageDataAnglePanel.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.DamageDataFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.EnemyMotTblFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.EnemyParamFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.EnemySoundEffectFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.AnimationNameHashDialog.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.EnemyStatEditor.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.EnemyDropViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.EnemyLayoutViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemBulletParamViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemCommonInfoViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemPriceViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemSkillParamViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemTechParamViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ListFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.LndCommonEditor.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.NomFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.ObjParamViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.QuestListViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.RmagBulletViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ScriptFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Scripts.ReferenceFindDialog.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.SetEditorSupportClasses.HexMetadataEditor.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.SetFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.ThinkDragonViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.UnitParamViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.UnpointeredFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.ObjectParticleInfoFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.XnaFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.XntFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileRenameForm.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.HexEditForm.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.MainSettings.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.MainForm.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.PartsInfoViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.PointeredFileViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Properties.Resources.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.TextViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.WeaponListEditor.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.WeaponParamViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.TextureViewer.resources
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu generic parser.csproj.GenerateResource.cache
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu generic parser.csproj.CoreCompileInputs.cache
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu gene.A8ADF87B.Up2Date
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu generic parser.exe
+C:\Users\Sammy\Downloads\tenora-works-main\psu generic parser\obj\Release\psu generic parser.pdb
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Resources\EBCDIC-NoSpecialChar.tbl
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Resources\EBCDIC.tbl
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\PSU Generic Parser.exe.config
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\PSU Generic Parser.exe
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\PSU Generic Parser.pdb
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.Shell.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.ShellExtensions.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\PSULib.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\WPFHexaEditor.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\PSULib.pdb
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\WPFHexaEditor.pdb
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.pdb
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.xml
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.Shell.pdb
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.Shell.xml
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.ShellExtensions.pdb
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\Microsoft.WindowsAPICodePack.ShellExtensions.xml
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\fr-CA\WPFHexaEditor.resources.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\pl-PL\WPFHexaEditor.resources.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\pt-BR\WPFHexaEditor.resources.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\ru-RU\WPFHexaEditor.resources.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\bin\Release\zh-CN\WPFHexaEditor.resources.dll
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu generic parser.csproj.AssemblyReference.cache
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ClothingFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.ActDataFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.AtkDatFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.DamageDataAnglePanel.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.DamageDataFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.EnemyMotTblFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.EnemyParamFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.EnemySoundEffectFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Enemies.AnimationNameHashDialog.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.EnemyStatEditor.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.EnemyDropViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.EnemyLayoutViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemBulletParamViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemCommonInfoViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemPriceViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemSkillParamViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ItemTechParamViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ListFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.LndCommonEditor.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.NomFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.ObjParamViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.QuestListViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.RmagBulletViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.ScriptFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.Scripts.ReferenceFindDialog.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileViewers.SetEditorSupportClasses.HexMetadataEditor.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.SetFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.ThinkDragonViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.UnitParamViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.UnpointeredFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.ObjectParticleInfoFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.XnaFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.FileViewers.XntFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Forms.FileRenameForm.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.HexEditForm.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.MainSettings.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.MainForm.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.PartsInfoViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.PointeredFileViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.Properties.Resources.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.TextViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.WeaponListEditor.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.WeaponParamViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu_generic_parser.TextureViewer.resources
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu generic parser.csproj.GenerateResource.cache
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu generic parser.csproj.CoreCompileInputs.cache
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\psu gene.A8ADF87B.Up2Date
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\PSU Generic Parser.exe
+D:\Games\PSU Tools\tenora-works-main\psu generic parser\obj\Release\PSU Generic Parser.pdb
