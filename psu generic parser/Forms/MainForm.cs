@@ -117,17 +117,17 @@ namespace psu_generic_parser
                 return;
             }
 
-            // === SPECIAL CASE: Hashed ADX files (keep the original hash name) ===
+            //  Hashed ADX files
             if (!fileName.EndsWith(".adx", StringComparison.OrdinalIgnoreCase))
             {
                 if (IsHashedAdxFilename(fileName))
                 {
-                    // Do NOT rename hashed files — only regular ADX files get the extension
+                    // Does NOT rename hashed files, hashes with a singular ADX file get the extension
                     OpenSingleFileAsAdx(fileName);
                     return;
                 }
 
-                // Normal ADX files → auto-rename (your original behavior)
+                // Normal ADX files get auto renamed appending the .adx
                 string newPath = Path.ChangeExtension(fileName, ".adx");
 
                 try
@@ -142,7 +142,7 @@ namespace psu_generic_parser
 
                         if (dr != DialogResult.Yes)
                         {
-                            OpenSingleFileAsAdx(fileName);   // open without renaming
+                            OpenSingleFileAsAdx(fileName);
                             return;
                         }
 
@@ -165,7 +165,6 @@ namespace psu_generic_parser
                 }
             }
 
-            // Open as a normal file in the tree + hex editor on the right
             OpenSingleFileAsAdx(fileName);
         }
 
@@ -175,35 +174,34 @@ namespace psu_generic_parser
             if (baseName.Length != 32)
                 return false;
 
-            // 32-character hexadecimal string = PSU hashed filename
             return baseName.All(c => "0123456789abcdefABCDEF".Contains(c));
         }
 
-        // ====================== Open ADX as tree node + Hex Editor on right ======================
+        // ====================== Open ADX as tree node ======================
         private void OpenSingleFileAsAdx(string filePath)
         {
             treeView1.Nodes.Clear();
             splitContainer1.Panel2.Controls.Clear();
 
-            loadedContainer = null;   // No real container for single ADX files
+            loadedContainer = null;   // Since there are no real containers for ADX files
 
-            string fileNameOnDisk = Path.GetFileName(filePath);   // this is the raw hash (e.g. 0cf10b4b0600f371ac9ec521e9b84cfc)
+            string fileNameOnDisk = Path.GetFileName(filePath);
 
-            // === SPECIAL CASE: Hashed ADX file (show .adx in tree view only) ===
+            // Hashed ADX files will append .adx to the tree view only
             string displayName = fileNameOnDisk;
 
             string cleaned = fileNameOnDisk.TrimStart('-');   // removes any leading dashes the container might add
             if (cleaned.Length == 32 && cleaned.All(c => "0123456789abcdefABCDEF".Contains(c)))
             {
-                displayName = cleaned + ".adx";   // ← This is what the user sees in the tree
+                displayName = cleaned + ".adx";
             }
 
             TreeNode adxNode = new TreeNode(displayName);
             adxNode.Tag = new FileTreeNodeTag
             {
                 OwnerContainer = null,
-                FileName = displayName,           // ← Extraction will now save as hash.adx
-                FullPath = filePath               // ← Actual file on disk stays unchanged (pure hash)
+                FileName = displayName,           // Extraction will now save as hash.adx
+                FullPath = filePath
             };
 
             adxNode.ContextMenuStrip = arbitraryFileContextMenuStrip;
@@ -236,14 +234,14 @@ namespace psu_generic_parser
                 splitContainer1.Panel2.Controls.Add(currentFileHexForm);
                 currentFileHexForm.Show();
 
-                // Create header (first 4 bytes) - compatible with C# 7.3
+                // Create header
                 byte[] header = new byte[4];
                 if (data.Length >= 4)
                 {
                     Array.Copy(data, 0, header, 0, 4);
                 }
 
-                // Create UnpointeredFile - this should now compile
+                // Create UnpointeredFile
                 currentRight = new UnpointeredFile(filename, data, header);
             }
             catch (Exception ex)
@@ -277,7 +275,6 @@ namespace psu_generic_parser
 
         private bool openPSUArchive(string fileName, TreeNodeCollection treeNodeCollection)
         {
-            // (your original openPSUArchive code remains unchanged)
             bool isValidArchive = false;
             byte[] formatName = new byte[4];
             Stream stream = File.Open(fileName, FileMode.Open);
@@ -343,7 +340,6 @@ namespace psu_generic_parser
             {
                 string filename = filenames[i];
                 TreeNode temp = new TreeNode(filename);
-                //Explicitly disallowing export/replace on raw NBL chunks--this would be very dangerous.
                 if(toRead is NblLoader)
                 {
                     temp.ContextMenuStrip = nblChunkContextMenuStrip;
@@ -353,7 +349,7 @@ namespace psu_generic_parser
                     temp.ContextMenuStrip = arbitraryFileContextMenuStrip;
                 }
 
-                if (toRead is AfsLoader || toRead is NblLoader || toRead is MiniAfsLoader) //AFS still doesn't lazy-load, meaning all my performance issues are STILL HERE.
+                if (toRead is AfsLoader || toRead is NblLoader || toRead is MiniAfsLoader)
                 {
                     PsuFile child = toRead.getFileParsed(i);
                     if (child != null && child is ContainerFile)
@@ -386,12 +382,16 @@ namespace psu_generic_parser
 
         private void extractPSUArchive(string fileName, string outDirectory)
         {
-            string finalDirectory = Path.Combine(outDirectory, Path.GetFileName(fileName) + "_ext");
+            string baseName = Path.GetFileName(fileName);
+            string finalDirectory = Path.Combine(outDirectory, baseName + "_ext");
             byte[] formatName = new byte[4];
+
             Stream stream = File.Open(fileName, FileMode.Open);
             stream.Read(formatName, 0, 4);
 
             string identifier = Encoding.ASCII.GetString(formatName, 0, 4);
+            short shortId = BitConverter.ToInt16(formatName, 0);
+
             if (identifier == "NMLL" || identifier == "NMLB")
             {
                 loadedContainer = new NblLoader(stream);
@@ -402,54 +402,82 @@ namespace psu_generic_parser
                 loadedContainer = new AfsLoader(stream);
                 exportChildFiles(loadedContainer, finalDirectory);
             }
-            else if (BitConverter.ToInt16(formatName, 0) == 0x50AF)
+            else if (shortId == 0x50AF)
             {
                 loadedContainer = new MiniAfsLoader(stream);
                 exportChildFiles(loadedContainer, finalDirectory);
             }
+            else
+            {
+                // Standalone hashed ADX file encountered during batch-folder export.
+                // PSULib has no parser for these — raw-copy the bytes directly.
+                stream.Close();
+                stream.Dispose();
+
+                if (IsHashedAdxFilename(baseName) && IsValidAdxFile(fileName))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(finalDirectory);
+                        string destFile = Path.Combine(finalDirectory, baseName + ".adx");
+                        File.Copy(fileName, destFile, overwrite: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Unable to copy hashed ADX " + baseName + ": " + ex.Message);
+                    }
+                }
+
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                return;
+            }
+
             stream.Close();
             stream.Dispose();
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
-
         }
 
         private void exportChildFiles(ContainerFile toRead, string outDirectory)
         {
-            bool isArchive = false;
             Directory.CreateDirectory(outDirectory);
             List<string> filenames = toRead.getFilenames();
             List<string> writtenFiles = new List<string>();
 
             for (int i = 0; i < filenames.Count; i++)
             {
+                bool isArchive = false;
                 string filename = filenames[i];
 
-                if (toRead is AfsLoader || toRead is NblLoader || toRead is MiniAfsLoader) //AFS still doesn't lazy-load, meaning all my performance issues are STILL HERE.
+                bool isKnownRawType =
+                    filename.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase) ||
+                    filename.EndsWith(".adx", StringComparison.OrdinalIgnoreCase);
+
+                if (!isKnownRawType)
                 {
-                    PsuFile child = toRead.getFileParsed(i);
-                    if (child != null && child is ContainerFile)
+                    if (toRead is AfsLoader || toRead is NblLoader || toRead is MiniAfsLoader)
                     {
-                        isArchive = true;
-                        if (filename == "NMLL chunk" || filename == "TMLL chunk")
+                        PsuFile child = toRead.getFileParsed(i);
+                        if (child != null && child is ContainerFile)
                         {
-                            exportChildFiles((ContainerFile)child, outDirectory);
-                        }
-                        else
-                        {
-                            string finalDirectory = Path.Combine(outDirectory, filename + "_ext");
-                            exportChildFiles((ContainerFile)child, finalDirectory);
+                            isArchive = true;
+                            if (filename == "NMLL chunk" || filename == "TMLL chunk")
+                                exportChildFiles((ContainerFile)child, outDirectory);
+                            else
+                                exportChildFiles((ContainerFile)child, Path.Combine(outDirectory, filename + "_ext"));
                         }
                     }
-                }
-                else //NBL chunk as parent
-                {
-                    RawFile raw = toRead.getFileRaw(i);
-                    if (filename.EndsWith(".nbl") || raw.fileheader == "NMLL" || raw.fileheader == "TMLL")
+                    else
                     {
-                        isArchive = true;
-                        exportChildFiles((ContainerFile)toRead.getFileParsed(i), outDirectory);
+                        RawFile raw = toRead.getFileRaw(i);
+                        if (filename.EndsWith(".nbl") || raw.fileheader == "NMLL" || raw.fileheader == "TMLL")
+                        {
+                            isArchive = true;
+                            exportChildFiles((ContainerFile)toRead.getFileParsed(i), outDirectory);
+                        }
                     }
                 }
 
@@ -458,29 +486,49 @@ namespace psu_generic_parser
                     if (isArchive)
                     {
                         if (batchExportSubArchiveFiles)
-                        {
                             extractFile(toRead.getFileParsed(i), Path.Combine(outDirectory, filename));
-                        }
                         continue;
+                    }
+                    // SFD video files — raw-copy straight from the container.
+                    else if (filename.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (toRead is AfsLoader || toRead is MiniAfsLoader)
+                            filename = CheckForDupeFilenames(writtenFiles, filename);
+
+                        RawFile sfdRaw = toRead.getFileRaw(i);
+                        if (sfdRaw?.fileContents != null)
+                        {
+                            File.WriteAllBytes(Path.Combine(outDirectory, filename), sfdRaw.fileContents);
+                            writtenFiles.Add(filename);
+                        }
+                    }
+                    // ADX audio files (hashed or named) — raw-copy straight from the container.
+                    else if (filename.EndsWith(".adx", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (toRead is AfsLoader || toRead is MiniAfsLoader)
+                            filename = CheckForDupeFilenames(writtenFiles, filename);
+
+                        RawFile adxRaw = toRead.getFileRaw(i);
+                        if (adxRaw?.fileContents != null)
+                        {
+                            File.WriteAllBytes(Path.Combine(outDirectory, filename), adxRaw.fileContents);
+                            writtenFiles.Add(filename);
+                        }
                     }
                     else if (filename.Contains(".xvr") && batchPngExport)
                     {
                         if (toRead is AfsLoader || toRead is MiniAfsLoader)
-                        {
                             filename = CheckForDupeFilenames(writtenFiles, filename);
-                        }
                         filename = filename.Replace(".xvr", ".png");
                         ((ITextureFile)toRead.getFileParsed(i)).mipMaps[0].Save(Path.Combine(outDirectory, filename));
                     }
                     else
                     {
                         if (toRead is AfsLoader || toRead is MiniAfsLoader)
-                        {
                             filename = CheckForDupeFilenames(writtenFiles, filename);
-                        }
                         File.WriteAllBytes(Path.Combine(outDirectory, filename), toRead.getFileRaw(i).WriteToBytes(exportMetaData));
                     }
-                } 
+                }
                 catch
                 {
                     Console.WriteLine("Unable to extract " + filename + ". The file may be in use, inaccessible, or incompatible. Skipping.");
@@ -816,6 +864,9 @@ namespace psu_generic_parser
 
                 if (isLargeOrVideo)
                 {
+                    // Ensure currentRight is populated so right-click → Extract works.
+                    try { currentRight = parent.getFileParsed(index); } catch { }
+
                     var warningPanel = new Panel
                     {
                         Dock = DockStyle.Fill,
@@ -828,7 +879,7 @@ namespace psu_generic_parser
                         TextAlign = ContentAlignment.MiddleCenter,
                         Font = new Font("Segoe UI", 10.5f),
                         Text = $"Preview unavailable due to file size.\n\n" +
-                               "• Right-click the file and Extract Selected to save it.\n" +
+                               "• Right click the file and Extract Selected to save it.\n" +
                                "• .sfd videos can be opened with VLC Media Player.\n\n" +
                                $"Filename: {displayName}"
                     };

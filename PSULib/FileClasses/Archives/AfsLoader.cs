@@ -316,7 +316,10 @@ namespace PSULib.FileClasses.Archives
 
         public RawFile getFileRaw(string filename)
         {
-            throw new NotImplementedException("Not ready yet");
+            int index = afsList.FindIndex(file => file.fileName == filename);
+            if (index < 0)
+                return null;
+            return getFileRaw(index);
         }
 
         public PsuFile getFileParsed(int fileIndex)
@@ -326,7 +329,16 @@ namespace PSULib.FileClasses.Archives
 
         public RawFile getFileRaw(int fileIndex)
         {
-            throw new NotImplementedException("Not ready yet");
+            if (fileIndex < 0 || fileIndex >= afsList.Count)
+                return null;
+
+            AfsFileEntry entry = afsList[fileIndex];
+            RawFile raw = new RawFile
+            {
+                filename = entry.fileName,
+                fileContents = entry.rawContents ?? new byte[0]
+            };
+            return raw;
         }
 
         public void replaceFile(string filename, RawFile toReplace)

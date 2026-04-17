@@ -1,0 +1,6 @@
+C:\Users\Sammy\Downloads\PSU-Generic-Parser-main2\PSU-Generic-Parser-main\PSULib\bin\Debug\PSULib.dll
+C:\Users\Sammy\Downloads\PSU-Generic-Parser-main2\PSU-Generic-Parser-main\PSULib\bin\Debug\PSULib.pdb
+C:\Users\Sammy\Downloads\PSU-Generic-Parser-main2\PSU-Generic-Parser-main\PSULib\obj\Debug\PSULib.csproj.AssemblyReference.cache
+C:\Users\Sammy\Downloads\PSU-Generic-Parser-main2\PSU-Generic-Parser-main\PSULib\obj\Debug\PSULib.csproj.CoreCompileInputs.cache
+C:\Users\Sammy\Downloads\PSU-Generic-Parser-main2\PSU-Generic-Parser-main\PSULib\obj\Debug\PSULib.dll
+C:\Users\Sammy\Downloads\PSU-Generic-Parser-main2\PSU-Generic-Parser-main\PSULib\obj\Debug\PSULib.pdb
