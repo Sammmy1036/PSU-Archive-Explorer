@@ -14,6 +14,7 @@ _(Forked from Tenora Works PSU Generic Parser)_
 
 New Features
 - Now exports ADX formats to WAV
+- Now exports DAT sound formats to WAV
 - Now reads/extracts archives which are identified as ADX instead of being read as null
 - Now analyzes ADX mappings file to determine the actual name of certain hashed ADX files
 - Now provides hints which will display if a file cannot be open and provides possible resolution
