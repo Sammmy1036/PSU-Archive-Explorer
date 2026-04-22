@@ -66,7 +66,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 - Convert your `.wav` to ADX using **ADX Converter & Player** (available on GameBanana: https://gamebanana.com/tools/6491).
 - Rename the resulting `.adx` to match the original hashed filename (remove the `.adx` extension).
 
-Some audio may also be embedded inside `.dat` files and can sometimes be previewed by importing raw data into Audacity.
+If you want to edit audio files which are packed in .dat files, it is recommended to edit inside of Audacity in raw .dat format to preserve file headers. Otherwise, you would need to rewrite headers in a Hex Editor of your choice.
 
 ## Special Thanks
 - **essen** — Initial research and [gasetools](https://github.com/essen/gasetools)
