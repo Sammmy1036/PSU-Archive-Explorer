@@ -8,7 +8,7 @@ _(Forked from Tenora Works PSU Generic Parser)_
 
 - **PSU Archive Explorer**: A general-purpose research and editing tool focused on individual files.
 - **AdxDecoder**: Automatic decoding of ADX audio files to WAV format.
-- **DAT2WAV**: Automatic header removal and conversion of DAT sound files to WAV format.
+- **DATConverter**: Automatic header removal and conversion of DAT sound files to WAV format.
 - **PSULib**: Core DLL containing all file format classes.
 
 ## Whats Changed
