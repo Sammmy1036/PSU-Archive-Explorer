@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <h1 align="center">Phantasy Star Universe Archive Explorer</h1>  <strong>PSU Archive Explorer</strong> for <em>Phantasy Star Universe</em>.<br>
+  <strong>PSU Archive Explorer</strong> for <em>Phantasy Star Universe</em>.<br>
 </p>
 
 <p align="center">
