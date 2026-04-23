@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://i.imgur.com/1xOwaKY.png" width="500" alt="PSU Archive Explorer">
+  <img src="https://i.imgur.com/1xOwaKY.png" width="250" alt="PSU Archive Explorer">
 </p>
 
 <p align="center">
