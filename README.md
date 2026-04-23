@@ -68,6 +68,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **XVR**   | Texture files (characters, environments, UI, etc.) |
 
 **ADX & DAT Sound Previewer**
+- Decodes audio and provides preview of ADX and DAT Sound files prior to export.
 <img src="https://i.imgur.com/gJSrtHh.png" width="800">
 
 **Note**: To **replace** audio:
