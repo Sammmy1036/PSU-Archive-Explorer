@@ -1,11 +1,12 @@
-<center>
-![PSU Archive Explorer](https://i.imgur.com/1xOwaKY.png)
-# Phantasy Star Universe Archive Explorer
+<p align="center">
+  <img src="https://i.imgur.com/1xOwaKY.png" width="500" alt="PSU Archive Explorer">
+</p>
 
-**PSU Archive Explorer** for *Phantasy Star Universe*.
-
-_(Forked from Tenora Works PSU Generic Parser)_
-</center>
+<p align="center">
+  <h1>Phantasy Star Universe Archive Explorer</h1>
+  <strong>PSU Archive Explorer</strong> for <em>Phantasy Star Universe</em>.<br>
+  <em>(Forked from Tenora Works PSU Generic Parser)</em>
+</p>
 
 ## What's Included
 
