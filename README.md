@@ -19,6 +19,7 @@ New Features
 - Now reads/extracts archives which are identified as ADX instead of being read as null
 - Now analyzes ADX mappings file to determine the actual name of certain hashed ADX files
 - Now provides hints which will display if a file cannot be open and provides possible resolution
+- Now provides a preview of ADX and DAT Sound Files Directly in PSU Archive Explorer prior to export
 - PSULib now supports raw byte reads
   
 Bug Fixes
@@ -34,7 +35,7 @@ Updates
 - C# language moved to 12.0
 
 Upcoming Features
-- Preview ADX and DAT Sound Files Directly in PSU Archive Explorer
+- Video file .sfd previewer
 
 ## How to Use the PSU Archive Explorer
 
