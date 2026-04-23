@@ -25,7 +25,7 @@ New Features
 - Now provides hints which will display if a file cannot be open and provides possible resolution
 - Now provides a preview of ADX and DAT Sound Files Directly in PSU Archive Explorer prior to export
 - PSULib now supports raw byte reads
-<img src="[https://i.imgur.com/gJSrtHh.png]" width="400">
+<img src="https://i.imgur.com/gJSrtHh.png" width="400">
 
 Bug Fixes
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
