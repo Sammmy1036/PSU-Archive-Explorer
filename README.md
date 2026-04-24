@@ -10,10 +10,12 @@
 ## What's Included
 
 - **PSU Archive Explorer**: A general-purpose research and editing tool focused on individual files.
-- **AdxDecoder**: Automatic decoding of ADX audio files to WAV format.
-- **DATConverter**: Automatic header removal and conversion of DAT sound files to WAV format.
-- **AdxDat Previewer**: Prepares ADX and DAT Sound files for preview.
 - **PSULib**: Core DLL containing all file format classes.
+- **NAudio**: Allows sampling of ADPCM data.
+- **PL_MPEG**: Allows previewing of SFD video files. 
+- **AdxDecoder**: Automatic decoding of ADX audio files to WAV format.
+- **AdxDat Previewer**: Prepares ADX and DAT Sound files for preview.
+- **DATConverter**: Automatic header removal and conversion of DAT sound files to WAV format.
 
 ## Whats Changed
 
