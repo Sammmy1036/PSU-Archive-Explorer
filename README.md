@@ -18,7 +18,6 @@ New Features
 - Now provides a preview of ADX and DAT Sound Files directly in PSU Archive Explorer prior to export
 - Now provides a preview of SFD Video Files directly in PSU Archive Explorer prior to export
 - Now provides a search bar where you can search directly for files from the hash index
-- PSULib now supports raw byte reads
 
 Bug Fixes
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
@@ -30,8 +29,9 @@ Bug Fixes
 - Fixes application crash when loading zone .rel files
 
 Updates
-- .NET framework moved to 4.8
-- C# language moved to 12.0
+- Updated .NET framework moved to 4.8
+- Updated C# language to 7.3
+- Updated PSULib to now support raw byte reads
 
 ## How to Use the PSU Archive Explorer
 
