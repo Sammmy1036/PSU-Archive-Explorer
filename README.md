@@ -81,7 +81,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - **VGStream** - KC for PSU AOTI
 - **Clementine Team** - Reviving and keeping the game running
 
-## Included Third-Party Code
+## Included Third-Party Code & Dependencies
 - **GIMSharp from Puyo Tools** - https://github.com/nickworonekin/puyotools
 - **PSU Generic Parser & PSULib** - https://github.com/Agrathejagged/tenora-works
 - **NAudio**: Allows sampling of ADPCM data - https://github.com/naudio/naudio
