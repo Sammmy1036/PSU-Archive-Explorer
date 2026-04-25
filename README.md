@@ -64,7 +64,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 
 **ADX & DAT Sound Previewer**
 - Decodes audio and provides preview of ADX and DAT Sound files prior to export.
-<img src="https://i.imgur.com/hWEgVZB.png" width="800">
+<img src="https://i.imgur.com/dcK3QAO.png" width="800">
 
 **Note**: To **replace** audio:
 - Convert your `.wav` to ADX using **ADX Converter & Player** (available on GameBanana: https://gamebanana.com/tools/6491).
@@ -74,7 +74,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 
 **SFD Previewer**
 - Decodes and provides preview of SFD video files prior to export.
-<img src="https://i.imgur.com/AqhN8mT.png" width="800">
+<img src="https://i.imgur.com/olgNYQ2.png" width="800">
 
 ## Special Thanks
 - **Agrathejagged** — Tenora Works, documentation, and the general footing for all things modding for PSU
