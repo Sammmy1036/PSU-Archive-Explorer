@@ -18,6 +18,7 @@ New Features
 - Now provides a preview of ADX and DAT Sound Files directly in PSU Archive Explorer prior to export
 - Now provides a preview of SFD Video Files directly in PSU Archive Explorer prior to export
 - Now provides a search bar where you can search directly for files from the hash index
+- Now provides enhanced parsing for XNCF, XNCP, and XNR files
 
 Bug Fixes
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
@@ -27,14 +28,12 @@ Bug Fixes
 - Fixes application crash when clicking in the .rel tree viewer box
 - Fixes application from not responding when moving the window on batch
 - Fixes application crash when loading zone .rel files
+- Fixes export dialogue not appearing when exporting SFD videos
 
 Updates
 - Updated .NET framework moved to 4.8
 - Updated C# language to 7.3
 - Updated PSULib to now support raw byte reads
-
-Upcoming Features
-- XNCP, XNCF, & XNR Parsing Enhancements
 
 ## How to Use the PSU Archive Explorer
 
