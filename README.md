@@ -7,6 +7,8 @@
   <em>(Forked from Tenora Works PSU Generic Parser)</em>
 </p>
 
+<a href="[https://example.com](https://github.com/Sammmy1036/PSU-Archive-Explorer/releases/tag/PSU-Archive-Explorer-1.0.0.1)">Download Latest Release</a>
+
 ## Whats Changed
 
 New Features
