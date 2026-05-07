@@ -17,7 +17,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Wpf Hexeditor is a fast and fully customisable user control for editing file or s" +
     "tream as hexadecimal.\r\nSupport .Net 4.7/4.8 and .Net Core 3.0")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("2.0.2.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("2.0.2+69c1f38068279190536799bf678c95f7143e3ac8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("2.0.2+0f24d89c059d48570fac29099e70a18d0191e6cc")]
 [assembly: System.Reflection.AssemblyProductAttribute("WpfHexaEditor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WPFHexaEditor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("2.0.2.0")]
