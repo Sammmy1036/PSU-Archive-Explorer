@@ -7,8 +7,6 @@
   <em>(Forked from Tenora Works PSU Generic Parser)</em>
 </p>
 
-<a href="[https://example.com](https://github.com/Sammmy1036/PSU-Archive-Explorer/releases/tag/PSU-Archive-Explorer-1.0.0.1)">Download Latest Release</a>
-
 ## Whats Changed
 
 New Features
@@ -36,6 +34,8 @@ Updates
 - Updated .NET framework moved to 4.8
 - Updated C# language to 7.3
 - Updated PSULib to now support raw byte reads
+
+**[Download Latest Release](https://github.com/Sammmy1036/PSU-Archive-Explorer/releases/tag/PSU-Archive-Explorer-1.0.0.1)**
 
 ## How to Use the PSU Archive Explorer
 
