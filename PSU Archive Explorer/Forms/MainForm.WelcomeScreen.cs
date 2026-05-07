@@ -44,7 +44,7 @@ namespace psu_archive_explorer
         /// Displays a logo in the left tree panel and a welcome message in the right panel.
         /// Only intended to be shown on first launch, before any archive has been loaded.
         /// The logo is inserted UNDERNEATH the existing tree/searchResults controls so that
-        /// the search box and search results continue to function normally — when the user
+        /// the search box and search results continue to function normally when the user
         /// starts typing, searchResults becomes visible and naturally covers the logo.
         /// </summary>
         private void ShowWelcomeScreen()
@@ -114,7 +114,7 @@ namespace psu_archive_explorer
 
             var titleLabel = new Label
             {
-                Text = "PSU Archive Explorer v1.0.0.0",
+                Text = "PSU Archive Explorer v1.0.0.1",
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
                 ForeColor = SystemColors.ControlText,
                 AutoSize = true,
