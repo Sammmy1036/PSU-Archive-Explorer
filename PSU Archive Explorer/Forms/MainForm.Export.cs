@@ -186,8 +186,24 @@ namespace psu_archive_explorer
 
         private void exportSelectedToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // Guard: same as Export All, no archive means nothing to export.
-            if (loadedContainer == null || treeView1.Nodes.Count == 0)
+            // There are two valid states for Export Selected:
+            //   1. An archive is loaded AND a file inside it is selected
+            //      (currentRight is set by tree-selection logic).
+            //   2. A loose hashed file (e.g. an .adx with the extension stripped)
+            //      was opened directly, so loadedContainer is null but the tree
+            //      shows that file with FullPath pointing at it on disk.
+            // exportSelected() handles both; we just need guards that don't
+            // mistake case 2 for "nothing to export".
+
+            bool standaloneFileSelected =
+                loadedContainer == null
+                && treeView1.SelectedNode?.Tag is FileTreeNodeTag standaloneTag
+                && standaloneTag.OwnerContainer == null
+                && !string.IsNullOrEmpty(standaloneTag.FullPath);
+
+            // Guard: nothing useful is loaded at all (no archive AND no
+            // standalone file open).
+            if (loadedContainer == null && !standaloneFileSelected)
             {
                 MessageBox.Show(
                     "No archive is currently loaded. Open an archive first, then select " +
@@ -202,7 +218,9 @@ namespace psu_archive_explorer
             // existing exportSelected() relies on currentRight, which is set
             // when the user clicks a tree node; if it's null, the function
             // would silently no-op. Tell the user what they need to do.
-            if (currentRight == null)
+            // (The standalone-file path doesn't need currentRight, so we
+            // skip this check when that's the case.)
+            if (loadedContainer != null && currentRight == null)
             {
                 MessageBox.Show(
                     "No file is selected. Click a file in the tree on the left, then try " +
@@ -238,6 +256,40 @@ namespace psu_archive_explorer
             // tree, otherwise there's literally nothing to export.
             if (loadedContainer == null || treeView1.Nodes.Count == 0)
             {
+                // Special case: a standalone file is open (e.g. a hashed .adx
+                // we wrapped in a fake container). Strictly speaking there's
+                // no archive, but "extract everything" with one file means
+                // exactly the same thing as "extract the selected file" — so
+                // just do that instead of asking the user to navigate menus.
+                // We accept either "standalone node currently selected" or
+                // "tree has exactly one node and it's a standalone file" — the
+                // second covers the case where the user clicked Export All
+                // without first clicking the (single) tree node.
+                bool standaloneFileSelected =
+                    loadedContainer == null
+                    && treeView1.SelectedNode?.Tag is FileTreeNodeTag selTag
+                    && selTag.OwnerContainer == null
+                    && !string.IsNullOrEmpty(selTag.FullPath);
+
+                bool singleStandaloneNode =
+                    loadedContainer == null
+                    && treeView1.Nodes.Count == 1
+                    && treeView1.Nodes[0].Tag is FileTreeNodeTag onlyTag
+                    && onlyTag.OwnerContainer == null
+                    && !string.IsNullOrEmpty(onlyTag.FullPath);
+
+                if (standaloneFileSelected || singleStandaloneNode)
+                {
+                    // Make sure the standalone node is selected so exportSelected()
+                    // sees it via treeView1.SelectedNode.
+                    if (!standaloneFileSelected && singleStandaloneNode)
+                    {
+                        treeView1.SelectedNode = treeView1.Nodes[0];
+                    }
+                    exportSelected();
+                    return;
+                }
+
                 MessageBox.Show(
                     "No archive is currently loaded. Open an archive first, then use " +
                     "Export All to extract its contents.",

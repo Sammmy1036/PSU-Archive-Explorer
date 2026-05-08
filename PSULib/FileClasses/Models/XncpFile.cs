@@ -193,6 +193,12 @@ namespace PSULib.FileClasses.Models
         private int gBase;
         private int delta;
 
+        // Shift-JIS is the encoding PSU's name strings use throughout. It's a
+        // strict superset of ASCII for byte values 0x00-0x7F, so English names
+        // like "window" decode identically. Cached on the type because looking
+        // up an Encoding by name is non-trivial and we call ResolveString a lot.
+        private static readonly Encoding ShiftJis = Encoding.GetEncoding("shift-jis");
+
         private string ResolveString(int storedOffset)
         {
             if (storedOffset == 0) return "";
@@ -202,8 +208,12 @@ namespace PSULib.FileClasses.Models
             while (end < data.Length && data[end] != 0) end++;
             int len = end - abs;
             if (len <= 0 || len > 1024) return "";
-            try { return Encoding.ASCII.GetString(data, abs, len); }
-            catch { return Encoding.GetEncoding("shift-jis").GetString(data, abs, len); }
+            // The previous version tried Encoding.ASCII first and "fell back"
+            // to Shift-JIS in a catch block, but Encoding.ASCII.GetString
+            // never throws on non-ASCII bytes; it silently replaces them
+            // with '?'. That's why Japanese names showed up as "??????".
+            // Decoding directly as Shift-JIS handles both ASCII and Japanese.
+            return ShiftJis.GetString(data, abs, len);
         }
 
         private int ResolveOffset(int storedOffset)

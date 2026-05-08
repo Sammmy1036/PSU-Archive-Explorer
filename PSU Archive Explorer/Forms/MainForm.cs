@@ -93,6 +93,11 @@ namespace psu_archive_explorer
             viewInHexButton.Enabled = false;
             Application.Idle += UpdateViewInHexButtonState;
 
+            // Show the archive overview panel once an archive finishes loading
+            // and no specific node is selected. Same Idle pattern, same reason:
+            // we don't have to plumb a callback through every load path.
+            Application.Idle += MaybeShowArchiveOverviewPanel;
+
             // Show welcome screen on first launch
             // It is torn down by HideWelcomeScreen() as soon as a file loads
             this.Shown += (s, e) => ShowWelcomeScreen();

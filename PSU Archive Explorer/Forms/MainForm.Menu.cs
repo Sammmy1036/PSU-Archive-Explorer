@@ -134,6 +134,49 @@ namespace psu_archive_explorer
 
                 if (shouldSkipSizeCheck)
                 {
+                    // Selecting a chunk node previously left the right panel
+                    // blank, since there's no viewer for the chunk itself.
+                    // Show a short explanation of what each chunk is so the
+                    // user has some context. Match the wording style of the
+                    // ADX info panel.
+                    bool isNmllChunk = fileName.IndexOf("NMLL chunk", StringComparison.OrdinalIgnoreCase) >= 0;
+                    bool isTmllChunk = fileName.IndexOf("TMLL chunk", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                    if (isNmllChunk)
+                    {
+                        ShowChunkInfoPanel(
+                            "NMLL chunk",
+                            "The NMLL chunk holds the structured game data inside an NBL container.\r\n" +
+                            "Things like models, parameter tables, animations, scripts, etc.\r\n" +
+                            "Each entry in the chunk is a separately parseable file with its own format.\r\n\r\n" +
+                            "Expand this node to browse its contents.");
+                        return;
+                    }
+
+                    if (isTmllChunk)
+                    {
+                        ShowChunkInfoPanel(
+                            "TMLL chunk",
+                            "The TMLL chunk holds texture data for an NBL container.\r\n" +
+                            "Things like texture files used by models and UI stored in the NMLL chunk.\r\n" +
+                            "Archives without textures will only contain an NMLL.\r\n\r\n" +
+                            "Expand this node to browse its contents.");
+                        return;
+                    }
+
+                    if (isNblFile)
+                    {
+                        // Title: actual filename (e.g. "ob_000_mh_0.nbl") so
+                        // the user sees which sub-archive they're looking at.
+                        ShowChunkInfoPanel(
+                            fileName,
+                            "NBL Archive (Nu2 Binary Library) is a container holding the structured data.\r\n" +
+                            "This data is packed into an NMLL chunk and an optional TMLL chunk.\r\n" +
+                            "NBLs are typically nested inside larger AFS containers with many sibling NBLs\r\n\r\n" +
+                            "Expand this node to browse its chunks.");
+                        return;
+                    }
+
                     setRightPanel(parent.getFileParsed(index));
                     return;
                 }
@@ -920,6 +963,215 @@ namespace psu_archive_explorer
         private void splitContainer1_Panel2_Paint(object sender, PaintEventArgs e)
         {
 
+        }
+
+        /// <summary>
+        /// Renders an informational panel in the right side of the form,
+        /// styled to match the ADX-detected info panel (centered text on a
+        /// light grey background). Used when the user selects a tree node
+        /// that's meaningful in the hierarchy but doesn't have its own
+        /// viewer (e.g. NMLL/TMLL chunks).
+        /// The title is bold; the body uses regular weight. Stacked vertically
+        /// in the centre of the panel via TableLayoutPanel so they stay
+        /// centred as the form resizes.
+        /// </summary>
+        private void ShowChunkInfoPanel(string title, string body)
+        {
+            ClearRightPanel();
+            BuildCenteredInfoPanel(title, body);
+        }
+
+        // Tracks whether the archive overview is currently the thing being
+        // shown in the right panel. Lets MaybeShowArchiveOverviewPanel skip
+        // its work most idle ticks, and lets us know when the user has
+        // navigated away from it (so we don't re-show it on every idle).
+        private bool isShowingArchiveOverview = false;
+
+        /// <summary>
+        /// Called every Application.Idle tick. Shows the archive overview
+        /// panel iff: we have a loaded archive, the tree has nodes, no node
+        /// is selected, the welcome screen is gone, and the right panel is
+        /// empty. This naturally fires once after a fresh archive load (when
+        /// ClearRightPanel has just run) and never re-fires until the user
+        /// clicks somewhere and comes back to a clean state, which is exactly
+        /// the behavior we want.
+        /// </summary>
+        private void MaybeShowArchiveOverviewPanel(object sender, EventArgs e)
+        {
+            if (welcomeVisible) return;
+            if (loadedContainer == null) return;
+            if (treeView1.Nodes.Count == 0) return;
+            if (treeView1.SelectedNode != null) return;
+            if (splitContainer1.Panel2.Controls.Count > 0) return;
+
+            try
+            {
+                ShowArchiveOverviewPanel();
+            }
+            catch (Exception ex)
+            {
+                // The overview is purely informational. If something throws
+                // while building it, just swallow it — better an empty grey
+                // panel than a crash on every idle tick.
+                Console.WriteLine("Failed to build archive overview: " + ex);
+            }
+        }
+
+        /// <summary>
+        /// Renders an "archive overview" info panel in the right side of the
+        /// form, summarising the currently-loaded archive: filename, type, and
+        /// chunk/file counts. Shown automatically after a fresh archive load
+        /// (when no node is selected) so the user has context instead of an
+        /// empty grey panel.
+        /// </summary>
+        private void ShowArchiveOverviewPanel()
+        {
+            ClearRightPanel();
+
+            string archiveFileName = string.IsNullOrEmpty(fileDialog.FileName)
+                ? "(unknown)"
+                : Path.GetFileName(fileDialog.FileName);
+
+            string archiveType;
+            string countsLine;
+
+            if (loadedContainer is NblLoader nbl)
+            {
+                archiveType = "NBL Archive";
+                countsLine = BuildNblCountsLine(nbl);
+            }
+            else if (loadedContainer is AfsLoader)
+            {
+                archiveType = "AFS Container";
+                int total = SafeCountTopLevel();
+                countsLine = total + " entr" + (total == 1 ? "y" : "ies");
+            }
+            else
+            {
+                archiveType = loadedContainer.GetType().Name;
+                int total = SafeCountTopLevel();
+                countsLine = total + " entr" + (total == 1 ? "y" : "ies");
+            }
+
+            string body = archiveType + "\r\n"
+                        + countsLine + "\r\n\r\n"
+                        + "Click any item in the tree on the left to view it.";
+
+            BuildCenteredInfoPanel(archiveFileName, body);
+            isShowingArchiveOverview = true;
+        }
+
+        /// <summary>
+        /// Builds the per-chunk counts line for an NBL archive, e.g.
+        /// "NMLL chunk: 47 files · TMLL chunk: 12 files". Falls back to a
+        /// generic count if introspecting the chunks fails for any reason.
+        /// </summary>
+        private string BuildNblCountsLine(NblLoader nbl)
+        {
+            try
+            {
+                var topNames = nbl.getFilenames();
+                var parts = new List<string>();
+
+                for (int i = 0; i < topNames.Count; i++)
+                {
+                    string chunkLabel = topNames[i];
+                    int innerCount = 0;
+                    try
+                    {
+                        if (nbl.getFileParsed(i) is ContainerFile inner)
+                        {
+                            innerCount = inner.getFilenames().Count;
+                        }
+                    }
+                    catch
+                    {
+                        innerCount = -1; // signal "couldn't count"
+                    }
+
+                    parts.Add(innerCount >= 0
+                        ? chunkLabel + ": " + innerCount + " file" + (innerCount == 1 ? "" : "s")
+                        : chunkLabel);
+                }
+
+                return string.Join("  ·  ", parts);
+            }
+            catch
+            {
+                int total = SafeCountTopLevel();
+                return total + " chunk" + (total == 1 ? "" : "s");
+            }
+        }
+
+        /// <summary>
+        /// Returns the number of top-level entries in the loaded container,
+        /// or 0 on any error. Used by the overview panel's fallback paths.
+        /// </summary>
+        private int SafeCountTopLevel()
+        {
+            try { return loadedContainer?.getFilenames()?.Count ?? 0; }
+            catch { return 0; }
+        }
+
+        /// <summary>
+        /// Shared layout used by ShowChunkInfoPanel and ShowArchiveOverviewPanel:
+        /// bold title, regular-weight body, both centred horizontally and
+        /// vertically on a light-grey background. Mirrors the ADX info panel's
+        /// look (minus the audio player).
+        /// </summary>
+        private void BuildCenteredInfoPanel(string title, string body)
+        {
+            var infoPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(229, 229, 229),
+            };
+
+            // 4-row layout: top spacer, title, body, bottom spacer. The two
+            // 50%-height spacers keep the title+body block vertically centred
+            // as the form resizes, while the AutoSize rows in the middle let
+            // the labels grow to fit their text.
+            var layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 4,
+                BackColor = Color.Transparent,
+                Padding = new Padding(10),
+            };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+
+            var titleLabel = new Label
+            {
+                Text = title,
+                Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                Height = 28,
+            };
+
+            var bodyLabel = new Label
+            {
+                Text = body,
+                Font = new Font("Segoe UI", 10.5f),
+                TextAlign = ContentAlignment.MiddleCenter,
+                AutoSize = false,
+                Dock = DockStyle.Fill,
+                Height = 180,
+            };
+
+            layout.Controls.Add(new Panel { BackColor = Color.Transparent }, 0, 0);
+            layout.Controls.Add(titleLabel, 0, 1);
+            layout.Controls.Add(bodyLabel, 0, 2);
+            layout.Controls.Add(new Panel { BackColor = Color.Transparent }, 0, 3);
+
+            infoPanel.Controls.Add(layout);
+            splitContainer1.Panel2.Controls.Add(infoPanel);
         }
     }
 }
