@@ -80,9 +80,35 @@ namespace psu_archive_explorer
                 "psu_file_index.gz");
             FileIndex.LoadFromFile(indexPath);
 
+            // Wire up dead-space click handlers so the "Search files..." placeholder
+            // is restored when the user clicks anywhere off the search box.
+            WireSearchFocusDrop();
+
+            // The hex viewer needs a selected file to work on. Start disabled
+            // and let the Idle handler keep it in sync from then on. Using
+            // Application.Idle is a standard WinForms pattern for command-state
+            // updates: it fires whenever the message pump is idle, so the
+            // button enabled state automatically tracks `currentRight` no
+            // matter where in the code that field gets assigned.
+            viewInHexButton.Enabled = false;
+            Application.Idle += UpdateViewInHexButtonState;
+
             // Show welcome screen on first launch
             // It is torn down by HideWelcomeScreen() as soon as a file loads
             this.Shown += (s, e) => ShowWelcomeScreen();
+        }
+
+        /// <summary>
+        /// Sync the View Current File in Hex button's enabled state with whether
+        /// there's actually a file selected to view. Wired to Application.Idle
+        /// in the constructor so it runs automatically; no need to call this
+        /// from every site that touches <see cref="currentRight"/>.
+        /// </summary>
+        private void UpdateViewInHexButtonState(object sender, EventArgs e)
+        {
+            // Cheap to call repeatedly Enabled is a property setter that
+            // no-ops if the value isn't actually changing.
+            viewInHexButton.Enabled = currentRight != null;
         }
 
         /// <summary>

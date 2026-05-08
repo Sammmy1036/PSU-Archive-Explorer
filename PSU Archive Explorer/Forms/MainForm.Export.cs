@@ -34,16 +34,39 @@ namespace psu_archive_explorer
     {
         private void exportBlob_Click(object sender, EventArgs e)
         {
-            if (loadedContainer is NblLoader)
+            // Guard: nothing loaded at all.
+            if (loadedContainer == null)
             {
-                CommonOpenFileDialog goodOpenFileDialog = new CommonOpenFileDialog();
-                goodOpenFileDialog.IsFolderPicker = true;
-                if (goodOpenFileDialog.ShowDialog() == CommonFileDialogResult.Ok)
-                {
-                    ((NblLoader)loadedContainer).exportDataBlob(goodOpenFileDialog.FileName);
-                }
+                MessageBox.Show(
+                    "No archive is currently loaded. Open an NBL archive first, then use " +
+                    "Export Blob to extract its data blob.",
+                    "Export Blob",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
             }
 
+            // Guard: Export Blob is NBL-specific. AFS, raw ADX, etc. don't have
+            // the data-blob layout this operation produces, so tell the user
+            // explicitly rather than silently no-op'ing.
+            if (!(loadedContainer is NblLoader))
+            {
+                MessageBox.Show(
+                    "Export Blob only works with NBL archives. The currently loaded " +
+                    "archive is not an NBL, so there is no data blob to export.",
+                    "Export Blob",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            CommonOpenFileDialog goodOpenFileDialog = new CommonOpenFileDialog();
+            goodOpenFileDialog.IsFolderPicker = true;
+            goodOpenFileDialog.Title = "Choose a destination folder for the data blob";
+            if (goodOpenFileDialog.ShowDialog() == CommonFileDialogResult.Ok)
+            {
+                ((NblLoader)loadedContainer).exportDataBlob(goodOpenFileDialog.FileName);
+            }
         }
 
         private async void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -163,6 +186,33 @@ namespace psu_archive_explorer
 
         private void exportSelectedToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            // Guard: same as Export All, no archive means nothing to export.
+            if (loadedContainer == null || treeView1.Nodes.Count == 0)
+            {
+                MessageBox.Show(
+                    "No archive is currently loaded. Open an archive first, then select " +
+                    "a file in the tree to use Export Selected.",
+                    "Export Selected",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            // Guard: archive is loaded but the user hasn't picked a file. The
+            // existing exportSelected() relies on currentRight, which is set
+            // when the user clicks a tree node; if it's null, the function
+            // would silently no-op. Tell the user what they need to do.
+            if (currentRight == null)
+            {
+                MessageBox.Show(
+                    "No file is selected. Click a file in the tree on the left, then try " +
+                    "Export Selected again.",
+                    "Export Selected",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
             exportSelected();
         }
 
@@ -171,15 +221,317 @@ namespace psu_archive_explorer
             exportSelected();
         }
 
-        private void exportAllToolStripMenuItem_Click(object sender, EventArgs e)
+        // Tracks the in-progress "Export All" run (if any) so the user can
+        // cancel by re-clicking, and so we can prevent two runs at once.
+        private CancellationTokenSource exportAllCts;
+
+        private async void exportAllToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //It is a sin to use the standard folder dialog
+            // Re-clicking the menu item while a run is in progress cancels it.
+            if (exportAllCts != null)
+            {
+                exportAllCts.Cancel();
+                return;
+            }
+
+            // Guard: we need an archive loaded with at least one node in the
+            // tree, otherwise there's literally nothing to export.
+            if (loadedContainer == null || treeView1.Nodes.Count == 0)
+            {
+                MessageBox.Show(
+                    "No archive is currently loaded. Open an archive first, then use " +
+                    "Export All to extract its contents.",
+                    "Export All",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
             CommonOpenFileDialog goodOpenFileDialog = new CommonOpenFileDialog();
             goodOpenFileDialog.IsFolderPicker = true;
+            goodOpenFileDialog.Title = "Choose a destination folder for the extracted contents";
 
-            if (goodOpenFileDialog.ShowDialog() == CommonFileDialogResult.Ok)
+            if (goodOpenFileDialog.ShowDialog() != CommonFileDialogResult.Ok) return;
+
+            string destinationFolder = goodOpenFileDialog.FileName;
+
+            // Build the export plan ON THE UI THREAD. Walking TreeNodes off the
+            // UI thread is undefined behavior — tree controls have thread affinity.
+            // This is fast (just walking nodes, no I/O), so doing it sync is fine.
+            List<ExportPlanEntry> plan = new List<ExportPlanEntry>();
+            try
             {
-                exportAll(treeView1.Nodes, goodOpenFileDialog.FileName);
+                Directory.CreateDirectory(destinationFolder);
+                foreach (TreeNode node in treeView1.Nodes)
+                {
+                    BuildExportPlan(node, destinationFolder, plan);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Failed to prepare the export:\n" + ex.Message,
+                    "Export All",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            if (plan.Count == 0)
+            {
+                MessageBox.Show(
+                    "Nothing to export — the loaded archive contains no extractable files.",
+                    "Export All",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            // Set up the run.
+            exportAllCts = new CancellationTokenSource();
+            CancellationToken token = exportAllCts.Token;
+
+            actionProgressBar.Value = 0;
+            actionProgressBar.Maximum = plan.Count;
+            progressStatusLabel.Text = $"Exporting: 0/{plan.Count} files. Click Export All again to cancel.";
+            progressStatusLabel.Refresh();
+
+            var progress = new Progress<int>(done =>
+            {
+                actionProgressBar.Value = done;
+                progressStatusLabel.Text = $"Exporting: {done}/{plan.Count} files. Click Export All again to cancel.";
+            });
+
+            int filesWritten = 0;
+            int filesSkipped = 0;
+            bool wasCancelled = false;
+
+            try
+            {
+                var result = await Task.Run(() =>
+                {
+                    int written = 0;
+                    int skipped = 0;
+                    int processed = 0;
+
+                    foreach (var entry in plan)
+                    {
+                        token.ThrowIfCancellationRequested();
+
+                        try
+                        {
+                            // Make sure the destination folder for this entry exists.
+                            // Multiple entries may share a folder; CreateDirectory is
+                            // a no-op if it already exists, so this is safe to call.
+                            string folder = Path.GetDirectoryName(entry.DestinationPath);
+                            if (!string.IsNullOrEmpty(folder))
+                            {
+                                Directory.CreateDirectory(folder);
+                            }
+
+                            File.WriteAllBytes(entry.DestinationPath, entry.Bytes);
+                            written++;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Export failed for {entry.DestinationPath}: {ex.Message}");
+                            skipped++;
+                        }
+
+                        processed++;
+                        ((IProgress<int>)progress).Report(processed);
+                    }
+
+                    return new { Written = written, Skipped = skipped };
+                }, token);
+
+                filesWritten = result.Written;
+                filesSkipped = result.Skipped;
+            }
+            catch (OperationCanceledException)
+            {
+                wasCancelled = true;
+            }
+            finally
+            {
+                exportAllCts.Dispose();
+                exportAllCts = null;
+
+                actionProgressBar.Value = 0;
+                progressStatusLabel.Text = "";
+                progressStatusLabel.Refresh();
+            }
+
+            if (wasCancelled)
+            {
+                MessageBox.Show(
+                    "Export cancelled. Files written before the cancel are still in:\n\n" + destinationFolder,
+                    "Export All",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            string summary = filesSkipped == 0
+                ? $"Exported {filesWritten} file(s) to:\n\n{destinationFolder}"
+                : $"Exported {filesWritten} file(s) to:\n\n{destinationFolder}\n\n" +
+                  $"({filesSkipped} file(s) could not be written — see console for details.)";
+
+            MessageBox.Show(
+                summary,
+                "Export All",
+                MessageBoxButtons.OK,
+                filesSkipped == 0 ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+        }
+
+        /// <summary>
+        /// One file's worth of work in an Export All run: where to write it
+        /// and what bytes to write. Built up-front on the UI thread so the
+        /// worker thread never has to touch TreeNodes.
+        /// </summary>
+        private class ExportPlanEntry
+        {
+            public string DestinationPath;
+            public byte[] Bytes;
+        }
+
+        /// <summary>
+        /// Walks a tree node and appends ExportPlanEntry items to <paramref name="plan"/>
+        /// for everything that should be written. This mirrors the logic in
+        /// exportNode but materializes the bytes (via PsuFile.ToRawFile) rather
+        /// than writing them, so the actual disk I/O can happen on a worker thread.
+        /// MUST be called on the UI thread because it walks TreeNodes.
+        /// </summary>
+        private void BuildExportPlan(TreeNode node, string fileDirectory, List<ExportPlanEntry> plan)
+        {
+            string originalFilename = node.Text;
+
+            // Standalone hashed-ADX nodes use a FileTreeNodeTag with FullPath
+            // pointing at a real file on disk. We currently don't include
+            // those in Export All since the existing exportNode skips them
+            // when there's no OwnerContainer; preserving that behavior here.
+            if (node.Tag is FileTreeNodeTag standaloneTag && standaloneTag.OwnerContainer == null)
+            {
+                return;
+            }
+
+            ContainerFile parent = (node.Tag is FileTreeNodeTag fttag) ? fttag.OwnerContainer : null;
+            if (parent == null)
+            {
+                // Top-level container nodes (the chunks) have no parent
+                // container themselves, but their child nodes do. Recurse.
+                foreach (TreeNode nodeChild in node.Nodes)
+                {
+                    BuildExportPlan(nodeChild, fileDirectory, plan);
+                }
+                return;
+            }
+
+            int fileIndex = node.Index;
+            List<string> parentFilenames = parent.getFilenames();
+            PsuFile file = parent.getFileParsed(fileIndex);
+
+            // NBLs only have "NML(B/L)" or "TML(B/L)" chunks as children, so
+            // we don't write anything at THIS level for them — we just recurse.
+            if (!(parent is NblLoader))
+            {
+                if (file is ITextureFile texFile && batchPngExport)
+                {
+                    // Texture-as-PNG. Save to a MemoryStream so we can hand
+                    // raw bytes to the worker thread.
+                    string filename = Path.Combine(fileDirectory, Path.GetFileName(originalFilename + ".png"));
+                    using (var ms = new MemoryStream())
+                    {
+                        texFile.mipMaps[0].Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                        plan.Add(new ExportPlanEntry { DestinationPath = filename, Bytes = ms.ToArray() });
+                    }
+                }
+                else if (batchWavExport
+                         && originalFilename != null
+                         && originalFilename.EndsWith(".adx", StringComparison.OrdinalIgnoreCase)
+                         && file is UnpointeredFile adxFile)
+                {
+                    string uniqueName = getUniqueFilename(originalFilename, fileIndex, parentFilenames);
+                    string wavName = Path.ChangeExtension(uniqueName, ".wav");
+                    string wavPath = Path.Combine(fileDirectory, wavName);
+                    try
+                    {
+                        byte[] wavBytes = AdxDecoder.DecodeToWav(adxFile.theData);
+                        plan.Add(new ExportPlanEntry { DestinationPath = wavPath, Bytes = wavBytes });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"ADX->WAV conversion failed for {originalFilename}: {ex.Message}. Writing raw .adx instead.");
+                        string adxPath = Path.Combine(fileDirectory, uniqueName);
+                        AddRawFileToPlan(file, adxPath, plan);
+                    }
+                }
+                else if (batchDat2WavExport
+                         && originalFilename != null
+                         && originalFilename.EndsWith(".dat", StringComparison.OrdinalIgnoreCase)
+                         && file is UnpointeredFile datUnpointed
+                         && DatConverter.IsSoundDat(datUnpointed.theData))
+                {
+                    string uniqueName = getUniqueFilename(originalFilename, fileIndex, parentFilenames);
+                    string wavName = Path.ChangeExtension(uniqueName, ".wav");
+                    string wavPath = Path.Combine(fileDirectory, wavName);
+                    try
+                    {
+                        byte[] wavBytes = DatConverter.DecodeToWav(datUnpointed.theData);
+                        plan.Add(new ExportPlanEntry { DestinationPath = wavPath, Bytes = wavBytes });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"DAT->WAV conversion failed for {originalFilename}: {ex.Message}. Writing raw .dat instead.");
+                        string datPath = Path.Combine(fileDirectory, uniqueName);
+                        AddRawFileToPlan(file, datPath, plan);
+                    }
+                }
+                else
+                {
+                    if (batchExportSubArchiveFiles || !(file is ContainerFile))
+                    {
+                        string filename = Path.Combine(fileDirectory, getUniqueFilename(originalFilename, fileIndex, parentFilenames));
+                        AddRawFileToPlan(file, filename, plan);
+                    }
+                }
+            }
+
+            if (file is ContainerFile)
+            {
+                string newFolder = Path.Combine(fileDirectory, getUniqueFilename(originalFilename, fileIndex, parentFilenames) + "_ext");
+                foreach (TreeNode nodeChild in node.Nodes)
+                {
+                    BuildExportPlan(nodeChild, newFolder, plan);
+                }
+            }
+            else
+            {
+                foreach (TreeNode nodeChild in node.Nodes)
+                {
+                    BuildExportPlan(nodeChild, fileDirectory, plan);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Pulls bytes out of a PsuFile via its RawFile representation and
+        /// queues them for writing. Mirrors what extractFile() does, but
+        /// without doing the I/O up-front.
+        /// </summary>
+        private void AddRawFileToPlan(PsuFile psuFile, string destinationPath, List<ExportPlanEntry> plan)
+        {
+            try
+            {
+                RawFile raw = psuFile.ToRawFile(0);
+                byte[] bytes = raw.WriteToBytes(exportMetaData);
+                plan.Add(new ExportPlanEntry { DestinationPath = destinationPath, Bytes = bytes });
+            }
+            catch (Exception ex)
+            {
+                // If we can't even get the bytes, we can't queue the file.
+                // Log it and skip — the run as a whole will continue.
+                Console.WriteLine($"Could not prepare {destinationPath} for export: {ex.Message}");
             }
         }
 

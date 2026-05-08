@@ -34,19 +34,17 @@
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.standardToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.exportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.openNewSessionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exportSelectedFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exportAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.batchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.extractAllInFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.listAllObjparamsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.listAllMonsterLayoutsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.calculateAnimationNameHashToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.debugToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exportBlobToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.createAFSToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.disableScriptParsingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -57,6 +55,12 @@
             this.decryptNMLLToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.textureCatalogueToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.catalogueEnemyparamToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.extractConvertToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.catalogueToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.debugSubMenuToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fileMenuSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.helpMenuSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.treeView1 = new System.Windows.Forms.TreeView();
@@ -103,9 +107,10 @@
             this.menuStrip1.BackColor = System.Drawing.SystemColors.MenuBar;
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.standardToolStripMenuItem,
-            this.batchToolStripMenuItem,
+            this.extractConvertToolStripMenuItem,
+            this.catalogueToolStripMenuItem,
             this.toolsToolStripMenuItem,
-            this.debugToolStripMenuItem});
+            this.helpToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.RenderMode = System.Windows.Forms.ToolStripRenderMode.System;
@@ -118,9 +123,9 @@
             this.standardToolStripMenuItem.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
             this.standardToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.openToolStripMenuItem,
-            this.exportToolStripMenuItem,
+            this.openNewSessionToolStripMenuItem,
             this.saveAsToolStripMenuItem,
-            this.settingsToolStripMenuItem,
+            this.fileMenuSeparator1,
             this.exitToolStripMenuItem});
             this.standardToolStripMenuItem.ImageTransparentColor = System.Drawing.Color.White;
             this.standardToolStripMenuItem.Name = "standardToolStripMenuItem";
@@ -135,26 +140,27 @@
             this.openToolStripMenuItem.Text = "Open";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
             // 
-            // exportToolStripMenuItem
+            // openNewSessionToolStripMenuItem
             // 
-            this.exportToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.exportSelectedFileToolStripMenuItem,
-            this.exportAllToolStripMenuItem});
-            this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
-            this.exportToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
-            this.exportToolStripMenuItem.Text = "Export";
+            this.openNewSessionToolStripMenuItem.Name = "openNewSessionToolStripMenuItem";
+            this.openNewSessionToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
+            this.openNewSessionToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
+            this.openNewSessionToolStripMenuItem.Text = "Open New Session";
+            this.openNewSessionToolStripMenuItem.Click += new System.EventHandler(this.openNewSessionToolStripMenuItem_Click);
             // 
             // exportSelectedFileToolStripMenuItem
             // 
             this.exportSelectedFileToolStripMenuItem.Name = "exportSelectedFileToolStripMenuItem";
-            this.exportSelectedFileToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.exportSelectedFileToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.E)));
+            this.exportSelectedFileToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
             this.exportSelectedFileToolStripMenuItem.Text = "Export Selected";
             this.exportSelectedFileToolStripMenuItem.Click += new System.EventHandler(this.exportSelectedToolStripMenuItem_Click);
             // 
             // exportAllToolStripMenuItem
             // 
             this.exportAllToolStripMenuItem.Name = "exportAllToolStripMenuItem";
-            this.exportAllToolStripMenuItem.Size = new System.Drawing.Size(154, 22);
+            this.exportAllToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.A)));
+            this.exportAllToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
             this.exportAllToolStripMenuItem.Text = "Export All";
             this.exportAllToolStripMenuItem.Click += new System.EventHandler(this.exportAllToolStripMenuItem_Click);
             // 
@@ -181,16 +187,6 @@
             this.exitToolStripMenuItem.Text = "Exit";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
             // 
-            // batchToolStripMenuItem
-            // 
-            this.batchToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.extractAllInFolderToolStripMenuItem,
-            this.listAllObjparamsToolStripMenuItem,
-            this.listAllMonsterLayoutsToolStripMenuItem});
-            this.batchToolStripMenuItem.Name = "batchToolStripMenuItem";
-            this.batchToolStripMenuItem.Size = new System.Drawing.Size(49, 20);
-            this.batchToolStripMenuItem.Text = "Batch";
-            // 
             // extractAllInFolderToolStripMenuItem
             // 
             this.extractAllInFolderToolStripMenuItem.Name = "extractAllInFolderToolStripMenuItem";
@@ -202,19 +198,23 @@
             // 
             this.listAllObjparamsToolStripMenuItem.Name = "listAllObjparamsToolStripMenuItem";
             this.listAllObjparamsToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
-            this.listAllObjparamsToolStripMenuItem.Text = "List all objparams";
+            this.listAllObjparamsToolStripMenuItem.Text = "List All Objparams";
             this.listAllObjparamsToolStripMenuItem.Click += new System.EventHandler(this.listAllObjparamsToolStripMenuItem_Click);
             // 
             // listAllMonsterLayoutsToolStripMenuItem
             // 
             this.listAllMonsterLayoutsToolStripMenuItem.Name = "listAllMonsterLayoutsToolStripMenuItem";
             this.listAllMonsterLayoutsToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
-            this.listAllMonsterLayoutsToolStripMenuItem.Text = "List all monster layouts";
+            this.listAllMonsterLayoutsToolStripMenuItem.Text = "List All Monster Layouts";
             this.listAllMonsterLayoutsToolStripMenuItem.Click += new System.EventHandler(this.listAllMonsterLayoutsToolStripMenuItem_Click);
             // 
             // toolsToolStripMenuItem
             // 
             this.toolsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.createAFSToolStripMenuItem,
+            this.insertNMLLFileToolStripMenuItem,
+            this.decryptNMLBToolStripMenuItem,
+            this.decryptNMLLToolStripMenuItem,
             this.calculateAnimationNameHashToolStripMenuItem});
             this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             this.toolsToolStripMenuItem.Size = new System.Drawing.Size(47, 20);
@@ -227,28 +227,63 @@
             this.calculateAnimationNameHashToolStripMenuItem.Text = "Calculate Animation Name Hash";
             this.calculateAnimationNameHashToolStripMenuItem.Click += new System.EventHandler(this.calculateAnimationNameHashToolStripMenuItem_Click);
             // 
-            // debugToolStripMenuItem
+            // extractConvertToolStripMenuItem
             // 
-            this.debugToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.extractConvertToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.exportSelectedFileToolStripMenuItem,
+            this.exportAllToolStripMenuItem,
+            this.extractAllInFolderToolStripMenuItem,
             this.exportBlobToolStripMenuItem,
-            this.createAFSToolStripMenuItem,
-            this.disableScriptParsingToolStripMenuItem,
             this.exportAllWeaponsToolStripMenuItem,
-            this.importAllWeaponsToolStripMenuItem,
-            this.insertNMLLFileToolStripMenuItem,
-            this.decryptNMLBToolStripMenuItem,
-            this.decryptNMLLToolStripMenuItem,
+            this.importAllWeaponsToolStripMenuItem});
+            this.extractConvertToolStripMenuItem.Name = "extractConvertToolStripMenuItem";
+            this.extractConvertToolStripMenuItem.Size = new System.Drawing.Size(116, 20);
+            this.extractConvertToolStripMenuItem.Text = "Extract";
+            // 
+            // catalogueToolStripMenuItem
+            // 
+            this.catalogueToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.textureCatalogueToolStripMenuItem,
-            this.catalogueEnemyparamToolStripMenuItem});
-            this.debugToolStripMenuItem.Name = "debugToolStripMenuItem";
-            this.debugToolStripMenuItem.Size = new System.Drawing.Size(54, 20);
-            this.debugToolStripMenuItem.Text = "Debug";
+            this.catalogueEnemyparamToolStripMenuItem,
+            this.listAllObjparamsToolStripMenuItem,
+            this.listAllMonsterLayoutsToolStripMenuItem});
+            this.catalogueToolStripMenuItem.Name = "catalogueToolStripMenuItem";
+            this.catalogueToolStripMenuItem.Size = new System.Drawing.Size(75, 20);
+            this.catalogueToolStripMenuItem.Text = "Catalogue";
+            // 
+            // fileMenuSeparator1
+            // 
+            this.fileMenuSeparator1.Name = "fileMenuSeparator1";
+            this.fileMenuSeparator1.Size = new System.Drawing.Size(160, 6);
+            // 
+            // helpToolStripMenuItem
+            // 
+            this.helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.debugSubMenuToolStripMenuItem,
+            this.helpMenuSeparator1,
+            this.settingsToolStripMenuItem});
+            this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
+            this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
+            this.helpToolStripMenuItem.Text = "Help";
+            // 
+            // debugSubMenuToolStripMenuItem
+            // 
+            this.debugSubMenuToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.disableScriptParsingToolStripMenuItem});
+            this.debugSubMenuToolStripMenuItem.Name = "debugSubMenuToolStripMenuItem";
+            this.debugSubMenuToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.debugSubMenuToolStripMenuItem.Text = "Debug";
+            // 
+            // helpMenuSeparator1
+            // 
+            this.helpMenuSeparator1.Name = "helpMenuSeparator1";
+            this.helpMenuSeparator1.Size = new System.Drawing.Size(177, 6);
             // 
             // exportBlobToolStripMenuItem
             // 
             this.exportBlobToolStripMenuItem.Name = "exportBlobToolStripMenuItem";
             this.exportBlobToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.exportBlobToolStripMenuItem.Text = "Export blob";
+            this.exportBlobToolStripMenuItem.Text = "Export Blob";
             this.exportBlobToolStripMenuItem.Click += new System.EventHandler(this.exportBlob_Click);
             // 
             // createAFSToolStripMenuItem
@@ -269,21 +304,21 @@
             // 
             this.exportAllWeaponsToolStripMenuItem.Name = "exportAllWeaponsToolStripMenuItem";
             this.exportAllWeaponsToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.exportAllWeaponsToolStripMenuItem.Text = "Export all weapons";
+            this.exportAllWeaponsToolStripMenuItem.Text = "Export All Weapons";
             this.exportAllWeaponsToolStripMenuItem.Click += new System.EventHandler(this.exportAllWeaponsToolStripMenuItem_Click);
             // 
             // importAllWeaponsToolStripMenuItem
             // 
             this.importAllWeaponsToolStripMenuItem.Name = "importAllWeaponsToolStripMenuItem";
             this.importAllWeaponsToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.importAllWeaponsToolStripMenuItem.Text = "Import all weapons";
+            this.importAllWeaponsToolStripMenuItem.Text = "Import All Weapons";
             this.importAllWeaponsToolStripMenuItem.Click += new System.EventHandler(this.importAllWeaponsToolStripMenuItem_Click);
             // 
             // insertNMLLFileToolStripMenuItem
             // 
             this.insertNMLLFileToolStripMenuItem.Name = "insertNMLLFileToolStripMenuItem";
             this.insertNMLLFileToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.insertNMLLFileToolStripMenuItem.Text = "Insert NMLL file";
+            this.insertNMLLFileToolStripMenuItem.Text = "Insert NMLL File";
             this.insertNMLLFileToolStripMenuItem.Click += new System.EventHandler(this.insertNMLLFileToolStripMenuItem_Click);
             // 
             // decryptNMLBToolStripMenuItem
@@ -304,20 +339,20 @@
             // 
             this.textureCatalogueToolStripMenuItem.Name = "textureCatalogueToolStripMenuItem";
             this.textureCatalogueToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.textureCatalogueToolStripMenuItem.Text = "Texture catalogue";
+            this.textureCatalogueToolStripMenuItem.Text = "Texture Catalogue";
             this.textureCatalogueToolStripMenuItem.Click += new System.EventHandler(this.textureCatalogueToolStripMenuItem_Click);
             // 
             // catalogueEnemyparamToolStripMenuItem
             // 
             this.catalogueEnemyparamToolStripMenuItem.Name = "catalogueEnemyparamToolStripMenuItem";
             this.catalogueEnemyparamToolStripMenuItem.Size = new System.Drawing.Size(201, 22);
-            this.catalogueEnemyparamToolStripMenuItem.Text = "Catalogue enemyparam";
+            this.catalogueEnemyparamToolStripMenuItem.Text = "Catalogue Enemyparam";
             this.catalogueEnemyparamToolStripMenuItem.Click += new System.EventHandler(this.catalogueEnemyparamToolStripMenuItem_Click);
             // 
             // splitContainer1
             // 
-            this.splitContainer1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.splitContainer1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.splitContainer1.Location = new System.Drawing.Point(12, 78);
             this.splitContainer1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
@@ -341,8 +376,8 @@
             // 
             // treeView1
             // 
-            this.treeView1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.treeView1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.treeView1.BackColor = System.Drawing.SystemColors.Window;
             this.treeView1.HideSelection = false;
@@ -359,8 +394,8 @@
             // 
             // searchResults
             // 
-            this.searchResults.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.searchResults.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.searchResults.ContextMenuStrip = this.searchResultContextMenu;
             this.searchResults.FullRowSelect = true;
@@ -388,26 +423,26 @@
             // 
             this.copyHashToolStripMenuItem.Name = "copyHashToolStripMenuItem";
             this.copyHashToolStripMenuItem.Size = new System.Drawing.Size(179, 22);
-            this.copyHashToolStripMenuItem.Text = "Copy hash filename";
+            this.copyHashToolStripMenuItem.Text = "Copy Hash Filename";
             this.copyHashToolStripMenuItem.Click += new System.EventHandler(this.copyHashToolStripMenuItem_Click);
             // 
             // copyFilenameToolStripMenuItem
             // 
             this.copyFilenameToolStripMenuItem.Name = "copyFilenameToolStripMenuItem";
             this.copyFilenameToolStripMenuItem.Size = new System.Drawing.Size(179, 22);
-            this.copyFilenameToolStripMenuItem.Text = "Copy filename";
+            this.copyFilenameToolStripMenuItem.Text = "Copy Filename";
             this.copyFilenameToolStripMenuItem.Click += new System.EventHandler(this.copyFilenameToolStripMenuItem_Click);
             // 
             // copyPathToolStripMenuItem
             // 
             this.copyPathToolStripMenuItem.Name = "copyPathToolStripMenuItem";
             this.copyPathToolStripMenuItem.Size = new System.Drawing.Size(179, 22);
-            this.copyPathToolStripMenuItem.Text = "Copy inner path";
+            this.copyPathToolStripMenuItem.Text = "Copy Inner Path";
             this.copyPathToolStripMenuItem.Click += new System.EventHandler(this.copyPathToolStripMenuItem_Click);
             // 
             // searchBox
             // 
-            this.searchBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.searchBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.searchBox.BackColor = System.Drawing.SystemColors.Window;
             this.searchBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
@@ -417,7 +452,7 @@
             this.searchBox.Name = "searchBox";
             this.searchBox.Size = new System.Drawing.Size(272, 23);
             this.searchBox.TabIndex = 30;
-            this.searchBox.Text = "Search files...";
+            this.searchBox.Text = "Search Files...";
             this.searchBox.TextChanged += new System.EventHandler(this.searchBox_TextChanged);
             this.searchBox.Enter += new System.EventHandler(this.searchBox_Enter);
             this.searchBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.searchBox_KeyDown);
@@ -425,7 +460,7 @@
             // 
             // searchStatusLabel
             // 
-            this.searchStatusLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            this.searchStatusLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.searchStatusLabel.Location = new System.Drawing.Point(0, 443);
             this.searchStatusLabel.Name = "searchStatusLabel";
@@ -656,8 +691,8 @@
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem standardToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem openToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem openNewSessionToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveAsToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem debugToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportBlobToolStripMenuItem;
         private System.Windows.Forms.SaveFileDialog saveFileDialog1;
         private System.Windows.Forms.SplitContainer splitContainer1;
@@ -680,11 +715,9 @@
         private System.Windows.Forms.ToolStripMenuItem decryptNMLBToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem decryptNMLLToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem textureCatalogueToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem exportToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportSelectedFileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exportAllToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem settingsToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem batchToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem extractAllInFolderToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem extractSelectedFileToolStripMenuItem;
         private System.Windows.Forms.ProgressBar actionProgressBar;
@@ -711,5 +744,11 @@
         private System.Windows.Forms.ToolStripMenuItem copyHashToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem copyFilenameToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem copyPathToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem extractConvertToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem catalogueToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem helpToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem debugSubMenuToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator fileMenuSeparator1;
+        private System.Windows.Forms.ToolStripSeparator helpMenuSeparator1;
     }
 }

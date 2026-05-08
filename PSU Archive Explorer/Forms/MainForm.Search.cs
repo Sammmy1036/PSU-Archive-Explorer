@@ -263,5 +263,60 @@ namespace psu_archive_explorer
 
             return hit.FileName;
         }
+
+        // ====================== Search box focus drop ======================
+        //
+        // The search box uses a manual "placeholder" pattern: when it loses
+        // focus and is empty, searchBox_Leave restores the "Search files..."
+        // grey placeholder text. That only fires when focus moves to another
+        // FOCUSABLE control.
+        //
+        // Clicking on dead space (the welcome screen labels, empty split panel
+        // areas, the form background, etc.) does not move focus, so the
+        // placeholder never comes back until the user clicks an actual button
+        // or other focusable control.
+        //
+        // To fix this, we wire MouseDown on every plausible dead-space surface
+        // to drop focus via this.ActiveControl = null. That triggers the
+        // search box's Leave event and restores the placeholder immediately.
+
+        /// <summary>
+        /// Call this once during form construction (after InitializeComponent).
+        /// Wires up MouseDown handlers on all the static dead-space controls.
+        /// Welcome-screen controls are wired up inside ShowWelcomeScreen instead,
+        /// because they are created and destroyed dynamically.
+        /// </summary>
+        private void WireSearchFocusDrop()
+        {
+            // The form itself (clicks on the bare form background).
+            this.MouseDown += DeadSpace_MouseDown;
+
+            // Both panels of the split container. These cover most of the
+            // window real estate and are the most common click targets when
+            // the user is "clicking off" the search box.
+            splitContainer1.Panel1.MouseDown += DeadSpace_MouseDown;
+            splitContainer1.Panel2.MouseDown += DeadSpace_MouseDown;
+
+            // The tree view itself doesn't need this it already takes focus on
+            // click. Same with searchResults, the buttons, etc.
+        }
+
+        /// <summary>
+        /// Generic MouseDown handler used by every dead-space surface. Drops
+        /// focus to nothing, which causes the search box's Leave event to fire
+        /// and the "Search files..." placeholder to be restored.
+        /// Cheap to call repeatedly there's no penalty if focus is already
+        /// elsewhere.
+        /// </summary>
+        private void DeadSpace_MouseDown(object sender, MouseEventArgs e)
+        {
+            // Only drop focus if it's currently in the search box; otherwise
+            // we'd be stealing focus away from whatever else the user might
+            // be interacting with (e.g. typing in a future text field).
+            if (searchBox != null && searchBox.Focused)
+            {
+                this.ActiveControl = null;
+            }
+        }
     }
 }

@@ -102,6 +102,10 @@ namespace psu_archive_explorer
             // all need to be able to sit on top of it when they become visible.
             welcomeLogoBox.SendToBack();
 
+            // Clicking the logo should also drop focus from the search box so
+            // its placeholder is restored.
+            welcomeLogoBox.MouseDown += DeadSpace_MouseDown;
+
             // ---- RIGHT: welcome message ----
             // Use a container Panel so we can dispose everything in one go via ClearRightPanel().
             welcomePanel = new Panel
@@ -114,7 +118,7 @@ namespace psu_archive_explorer
 
             var titleLabel = new Label
             {
-                Text = "PSU Archive Explorer v1.0.0.1",
+                Text = "PSU Archive Explorer v1.0.0.2",
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
                 ForeColor = SystemColors.ControlText,
                 AutoSize = true,
@@ -161,7 +165,7 @@ namespace psu_archive_explorer
                      + "• Use the tree on the left to browse the contents of the container\r\n\r\n"
                      + "• Use the search box above the tree panel on the left to find files by name or hash\r\n\r\n"
                      + "• Right click a file for extraction / replacement / renaming options\r\n\r\n"
-                     + "• Batch ▸ Extract All In Folder to bulk extract a directory of archives\r\n\r\n"
+                     + "• Extract ▸ Extract All In Folder to bulk extract a directory of archives\r\n\r\n"
                      + "Happy Modding!",
                 Font = new Font("Segoe UI", 9.5F),
                 ForeColor = SystemColors.ControlText,
@@ -173,6 +177,15 @@ namespace psu_archive_explorer
             welcomePanel.Controls.Add(checkReleaseLabel);
             welcomePanel.Controls.Add(githubLink);
             welcomePanel.Controls.Add(helpfulLabel);
+
+            // Wire up MouseDown on the welcome panel and its non-interactive
+            // labels so clicking any of them drops focus from the search box
+            // and restores the "Search files..." placeholder. The GitHub link
+            // is intentionally left out so clicks on it still open the URL.
+            welcomePanel.MouseDown += DeadSpace_MouseDown;
+            titleLabel.MouseDown += DeadSpace_MouseDown;
+            checkReleaseLabel.MouseDown += DeadSpace_MouseDown;
+            helpfulLabel.MouseDown += DeadSpace_MouseDown;
 
             splitContainer1.Panel2.Controls.Add(welcomePanel);
 

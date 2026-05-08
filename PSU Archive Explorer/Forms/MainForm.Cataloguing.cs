@@ -32,6 +32,11 @@ namespace psu_archive_explorer
 {
     public partial class MainForm : Form
     {
+        // Tracks the in-progress catalogue scan (if any) so the user can
+        // cancel by re-clicking the menu item, and so we can prevent two
+        // scans from running at once.
+        private CancellationTokenSource catalogueScanCts;
+
         private class TextureEntry
         {
             public RawFile fileContents;
@@ -117,156 +122,397 @@ namespace psu_archive_explorer
             }
         }
 
-        private void listAllObjparamsToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void listAllObjparamsToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            // Re-clicking the menu item while a scan is running cancels it.
+            if (catalogueScanCts != null)
+            {
+                catalogueScanCts.Cancel();
+                return;
+            }
+
             CommonOpenFileDialog goodOpenFileDialog = new CommonOpenFileDialog();
             goodOpenFileDialog.IsFolderPicker = true;
 
-            if (goodOpenFileDialog.ShowDialog() == CommonFileDialogResult.Ok)
-            {
-                string[] fileNames = Directory.GetFiles(goodOpenFileDialog.FileName);
-                actionProgressBar.Maximum = fileNames.Length;
-                progressStatusLabel.Text = $"Progress: {actionProgressBar.Value}/{actionProgressBar.Maximum} Files. Please wait, this can take time.";
-                progressStatusLabel.Refresh();
-                Dictionary<int, Tuple<string, ObjectParamFile.ObjectEntry>> objects = new Dictionary<int, Tuple<string, ObjectParamFile.ObjectEntry>>();
+            if (goodOpenFileDialog.ShowDialog() != CommonFileDialogResult.Ok) return;
 
-                foreach (string fileName in fileNames)
+            string folder = goodOpenFileDialog.FileName;
+
+            // Pre-filter to NMLL files only. Reading 4 bytes per file is cheap
+            // and avoids the progress bar slogging through textures/archives/etc.
+            // that we'd skip anyway. Files that can't be opened are excluded.
+            // We do this on a worker thread because even just opening 1000+ files
+            // on the UI thread can take long enough to make the app look frozen.
+            List<string> nmllFiles = await Task.Run(() =>
+            {
+                List<string> results = new List<string>();
+                foreach (string fileName in Directory.GetFiles(folder))
                 {
-                    Console.WriteLine(fileName);
-                    string newFolder = Path.GetDirectoryName(fileName);
-                    byte[] formatName = new byte[4];
                     try
                     {
-                        using (Stream stream = File.Open(fileName, FileMode.Open))
+                        using (Stream s = File.Open(fileName, FileMode.Open))
                         {
-                            stream.Read(formatName, 0, 4);
-
-                            string identifier = Encoding.ASCII.GetString(formatName, 0, 4);
-                            if (identifier == "NMLL")
+                            byte[] header = new byte[4];
+                            if (s.Read(header, 0, 4) == 4
+                                && Encoding.ASCII.GetString(header, 0, 4) == "NMLL")
                             {
+                                results.Add(fileName);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Skip unreadable files silently.
+                    }
+                }
+                return results;
+            });
+
+            if (nmllFiles.Count == 0)
+            {
+                MessageBox.Show(
+                    "No NMLL files were found in the selected folder!" +
+                    "No object parameters to list.",
+                    "List All Object Parameters",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            string outputFileName = Path.Combine(folder, "ObjParameters.txt");
+
+            // Set up the scan. The token lets the user cancel by re-clicking
+            // the menu item; it also doubles as our "is a scan running?" flag.
+            catalogueScanCts = new CancellationTokenSource();
+            CancellationToken token = catalogueScanCts.Token;
+
+            actionProgressBar.Value = 0;
+            actionProgressBar.Maximum = nmllFiles.Count;
+            progressStatusLabel.Text = $"Progress: 0/{nmllFiles.Count} Files. Click List All Objparams again to cancel.";
+            progressStatusLabel.Refresh();
+
+            // IProgress<int> marshals the count back onto the UI thread for us;
+            // we only need to update controls in this lambda, never inside the loop.
+            var progress = new Progress<int>(done =>
+            {
+                actionProgressBar.Value = done;
+                progressStatusLabel.Text = $"Progress: {done}/{nmllFiles.Count} Files. Click List All Objparams again to cancel.";
+            });
+
+            Dictionary<int, Tuple<string, ObjectParamFile.ObjectEntry>> objects = null;
+            bool wasCancelled = false;
+
+            try
+            {
+                objects = await Task.Run(() =>
+                {
+                    var found = new Dictionary<int, Tuple<string, ObjectParamFile.ObjectEntry>>();
+                    int processed = 0;
+
+                    foreach (string fileName in nmllFiles)
+                    {
+                        token.ThrowIfCancellationRequested();
+
+                        try
+                        {
+                            using (Stream stream = File.Open(fileName, FileMode.Open))
+                            {
+                                // We've already pre-filtered to NMLL files above.
                                 NblLoader nbl = new NblLoader(stream);
                                 if (((NblChunk)nbl.getFileParsed(0)).doesFileExist("obj_param.xnr"))
                                 {
                                     ObjectParamFile paramFile = (ObjectParamFile)((NblChunk)nbl.getFileParsed(0)).getFileParsed("obj_param.xnr");
                                     foreach (int objectId in paramFile.ObjectDefinitions.Keys)
                                     {
-                                        if (objects.ContainsKey(objectId) && !objects[objectId].Item2.group2Entry.Equals(paramFile.ObjectDefinitions[objectId].group2Entry))
+                                        if (found.ContainsKey(objectId) && !found[objectId].Item2.group2Entry.Equals(paramFile.ObjectDefinitions[objectId].group2Entry))
                                         {
-                                            Console.WriteLine("Mismatched object, ID = " + objectId + " compared to " + objects[objectId].Item1);
+                                            Console.WriteLine("Mismatched object, ID = " + objectId + " compared to " + found[objectId].Item1);
                                         }
                                         else
                                         {
-                                            objects[objectId] = new Tuple<string, ObjectParamFile.ObjectEntry>(fileName, paramFile.ObjectDefinitions[objectId]);
+                                            found[objectId] = new Tuple<string, ObjectParamFile.ObjectEntry>(fileName, paramFile.ObjectDefinitions[objectId]);
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                    catch (Exception exception)
-                    {
-                        Console.WriteLine("Error reading file");
+                        catch (Exception)
+                        {
+                            Console.WriteLine("Error reading file: " + fileName);
+                        }
+
+                        processed++;
+                        ((IProgress<int>)progress).Report(processed);
                     }
 
-                    actionProgressBar.Value++;
-                    progressStatusLabel.Text = $"Progress: {actionProgressBar.Value}/{actionProgressBar.Maximum} Files. Please wait, this can take time.";
-                    progressStatusLabel.Refresh();
-                }
+                    return found;
+                }, token);
+            }
+            catch (OperationCanceledException)
+            {
+                wasCancelled = true;
+            }
+            finally
+            {
+                catalogueScanCts.Dispose();
+                catalogueScanCts = null;
 
-                foreach (int i in objects.Keys.OrderBy(a => a))
+                actionProgressBar.Value = 0;
+                progressStatusLabel.Text = "";
+                progressStatusLabel.Refresh();
+            }
+
+            if (wasCancelled)
+            {
+                MessageBox.Show(
+                    "Scan cancelled.",
+                    "List All Object Parameters",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            // Write the results to ObjParameters.txt in the scanned folder.
+            // We do this only on a successful scan (not on cancel) so the file
+            // always reflects a complete pass.
+            try
+            {
+                using (StreamWriter writer = new StreamWriter(outputFileName))
                 {
-                    var hitbox = objects[i].Item2.group2Entry;
-                    Console.WriteLine("Object " + i + ", first found in " + objects[i].Item1 + ": group 0 = " + hitbox.hitboxShape + "; {" + hitbox.unknownFloat2 + ", " + hitbox.unknownFloat3 + ", " + hitbox.unknownFloat3 + "}; id 1 = " + hitbox.unknownInt5 + "; isolated float = " + hitbox.unknownFloat6 + "; last value = " + hitbox.unknownInt9);
+                    writer.WriteLine($"Object parameter scan: {nmllFiles.Count} NMLL file(s) scanned, {objects.Count} unique object(s) found.");
+                    writer.WriteLine();
+
+                    foreach (int i in objects.Keys.OrderBy(a => a))
+                    {
+                        var hitbox = objects[i].Item2.group2Entry;
+                        writer.WriteLine("Object " + i + ", first found in " + objects[i].Item1 + ":");
+                        writer.WriteLine("\tHitbox shape:    " + hitbox.hitboxShape);
+                        writer.WriteLine("\tFloats:          {" + hitbox.unknownFloat2 + ", " + hitbox.unknownFloat3 + ", " + hitbox.unknownFloat3 + "}");
+                        writer.WriteLine("\tID 1:            " + hitbox.unknownInt5);
+                        writer.WriteLine("\tIsolated float:  " + hitbox.unknownFloat6);
+                        writer.WriteLine("\tLast value:      " + hitbox.unknownInt9);
+                        writer.WriteLine();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Failed to write " + outputFileName + ":\n" + ex.Message,
+                    "List All Object Parameters",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (objects.Count == 0)
+            {
+                MessageBox.Show(
+                    $"Scanned {nmllFiles.Count} NMLL file(s) but no object parameters " +
+                    "(obj_param.xnr) were detected.",
+                    "List All Object Parameters",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"Found {objects.Count} unique object parameter(s) across " +
+                    $"{nmllFiles.Count} NMLL file(s). Results were written to:\n\n{outputFileName}",
+                    "List All Object Parameters",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
         }
 
-        private void listAllMonsterLayoutsToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void listAllMonsterLayoutsToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            // Re-clicking the menu item while a scan is running cancels it.
+            if (catalogueScanCts != null)
+            {
+                catalogueScanCts.Cancel();
+                return;
+            }
+
             CommonOpenFileDialog goodOpenFileDialog = new CommonOpenFileDialog();
             goodOpenFileDialog.IsFolderPicker = true;
 
-            if (goodOpenFileDialog.ShowDialog() == CommonFileDialogResult.Ok)
-            {
-                string outputFileName = Path.Combine(goodOpenFileDialog.FileName, "report2.txt");
-                StreamWriter writer = new StreamWriter(outputFileName);
-                string[] fileNames = Directory.GetFiles(goodOpenFileDialog.FileName);
-                actionProgressBar.Maximum = fileNames.Length;
-                progressStatusLabel.Text = $"Progress: {actionProgressBar.Value}/{actionProgressBar.Maximum} Files. Please wait, this can take time.";
-                progressStatusLabel.Refresh();
-                Dictionary<int, Tuple<string, ObjectParamFile.ObjectEntry>> objects = new Dictionary<int, Tuple<string, ObjectParamFile.ObjectEntry>>();
+            if (goodOpenFileDialog.ShowDialog() != CommonFileDialogResult.Ok) return;
 
-                foreach (string fileName in fileNames)
+            string folder = goodOpenFileDialog.FileName;
+
+            // Pre-filter to AFS files only. The original code checked the first
+            // 3 bytes ("AFS") so we preserve that behavior here. Done on a worker
+            // thread so the UI stays responsive even with huge folders.
+            List<string> afsFiles = await Task.Run(() =>
+            {
+                List<string> results = new List<string>();
+                foreach (string fileName in Directory.GetFiles(folder))
                 {
-                    string newFolder = Path.GetDirectoryName(fileName);
-                    byte[] formatName = new byte[4];
                     try
                     {
-                        using (Stream stream = File.Open(fileName, FileMode.Open))
+                        using (Stream s = File.Open(fileName, FileMode.Open))
                         {
-                            stream.Read(formatName, 0, 4);
-
-                            string identifier = Encoding.ASCII.GetString(formatName, 0, 3);
-                            if (identifier == "AFS")
+                            byte[] header = new byte[4];
+                            if (s.Read(header, 0, 4) == 4
+                                && Encoding.ASCII.GetString(header, 0, 3) == "AFS")
                             {
-                                writer.WriteLine(fileName);
-                                AfsLoader afs = new AfsLoader(stream);
-                                foreach (var file in afs.afsList)
+                                results.Add(fileName);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Skip unreadable files silently.
+                    }
+                }
+                return results;
+            });
+
+            if (afsFiles.Count == 0)
+            {
+                MessageBox.Show(
+                    "No AFS files were found in the selected folder!" +
+                    "No monster layouts to list.",
+                    "List All Monster Layouts",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            string outputFileName = Path.Combine(folder, "MonsterLayout.txt");
+
+            catalogueScanCts = new CancellationTokenSource();
+            CancellationToken token = catalogueScanCts.Token;
+
+            actionProgressBar.Value = 0;
+            actionProgressBar.Maximum = afsFiles.Count;
+            progressStatusLabel.Text = $"Progress: 0/{afsFiles.Count} Files. Click List All Monster Layouts again to cancel.";
+            progressStatusLabel.Refresh();
+
+            var progress = new Progress<int>(done =>
+            {
+                actionProgressBar.Value = done;
+                progressStatusLabel.Text = $"Progress: {done}/{afsFiles.Count} Files. Click List All Monster Layouts again to cancel.";
+            });
+
+            int layoutsWritten = 0;
+            bool wasCancelled = false;
+
+            try
+            {
+                layoutsWritten = await Task.Run(() =>
+                {
+                    int written = 0;
+                    int processed = 0;
+
+                    using (StreamWriter writer = new StreamWriter(outputFileName))
+                    {
+                        foreach (string fileName in afsFiles)
+                        {
+                            token.ThrowIfCancellationRequested();
+
+                            try
+                            {
+                                using (Stream stream = File.Open(fileName, FileMode.Open))
                                 {
-                                    if (file.fileName.StartsWith("zone") && file.fileName.EndsWith("_ae.nbl"))
+                                    writer.WriteLine(fileName);
+                                    AfsLoader afs = new AfsLoader(stream);
+                                    foreach (var file in afs.afsList)
                                     {
-                                        NblLoader nbl = (NblLoader)file.fileContents;
-                                        foreach (var nblFile in ((ContainerFile)nbl.getFileParsed(0)).getFilenames())
+                                        if (file.fileName.StartsWith("zone") && file.fileName.EndsWith("_ae.nbl"))
                                         {
-                                            if (nblFile.StartsWith("enemy") && nblFile.EndsWith(".xnr"))
+                                            NblLoader nbl = (NblLoader)file.fileContents;
+                                            foreach (var nblFile in ((ContainerFile)nbl.getFileParsed(0)).getFilenames())
                                             {
-                                                EnemyLayoutFile layoutFile = (EnemyLayoutFile)((ContainerFile)nbl.getFileParsed(0)).getFileParsed(nblFile);
-                                                writer.WriteLine("\t" + nblFile + ":");
-                                                for (int i = 0; i < layoutFile.spawns.Length; i++)
+                                                if (nblFile.StartsWith("enemy") && nblFile.EndsWith(".xnr"))
                                                 {
-                                                    writer.WriteLine($"\t\tSpawn {i}:");
-                                                    writer.WriteLine($"\t\tMonsters:");
-                                                    for (int j = 0; j < layoutFile.spawns[i].monsters.Length; j++)
+                                                    EnemyLayoutFile layoutFile = (EnemyLayoutFile)((ContainerFile)nbl.getFileParsed(0)).getFileParsed(nblFile);
+                                                    writer.WriteLine("\t" + nblFile + ":");
+                                                    for (int i = 0; i < layoutFile.spawns.Length; i++)
                                                     {
-                                                        writer.WriteLine($"\t\t\tGroup {j}:");
-                                                        for (int k = 0; k < layoutFile.spawns[i].monsters[j].Length; k++)
+                                                        writer.WriteLine($"\t\tSpawn {i}:");
+                                                        writer.WriteLine($"\t\tMonsters:");
+                                                        for (int j = 0; j < layoutFile.spawns[i].monsters.Length; j++)
                                                         {
-                                                            writer.WriteLine("\t\t\t\t" + layoutFile.spawns[i].monsters[j][k].ToString());
+                                                            writer.WriteLine($"\t\t\tGroup {j}:");
+                                                            for (int k = 0; k < layoutFile.spawns[i].monsters[j].Length; k++)
+                                                            {
+                                                                writer.WriteLine("\t\t\t\t" + layoutFile.spawns[i].monsters[j][k].ToString());
+                                                            }
+                                                        }
+                                                        writer.WriteLine($"\t\tArrangements:");
+                                                        for (int j = 0; j < layoutFile.spawns[i].arrangements.Length; j++)
+                                                        {
+                                                            writer.WriteLine("\t\t\t" + layoutFile.spawns[i].arrangements[j].ToString());
+                                                        }
+                                                        writer.WriteLine($"\t\tSpawn Data:");
+                                                        for (int j = 0; j < layoutFile.spawns[i].spawnData.Length; j++)
+                                                        {
+                                                            writer.WriteLine("\t\t\t" + layoutFile.spawns[i].spawnData[j].ToString());
                                                         }
                                                     }
-                                                    writer.WriteLine($"\t\tArrangements:");
-                                                    for (int j = 0; j < layoutFile.spawns[i].arrangements.Length; j++)
-                                                    {
-                                                        writer.WriteLine("\t\t\t" + layoutFile.spawns[i].arrangements[j].ToString());
-                                                    }
-                                                    writer.WriteLine($"\t\tSpawn Data:");
-                                                    for (int j = 0; j < layoutFile.spawns[i].spawnData.Length; j++)
-                                                    {
-                                                        writer.WriteLine("\t\t\t" + layoutFile.spawns[i].spawnData[j].ToString());
-                                                    }
+                                                    written++;
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
+                            catch (Exception)
+                            {
+                                Console.WriteLine("Error reading file: " + fileName);
+                            }
+
+                            processed++;
+                            ((IProgress<int>)progress).Report(processed);
                         }
                     }
-                    catch (Exception exception)
-                    {
-                        Console.WriteLine("Error reading file");
-                    }
 
-                    actionProgressBar.Value++;
-                    progressStatusLabel.Text = $"Progress: {actionProgressBar.Value}/{actionProgressBar.Maximum} Files. Please wait, this can take time.";
-                    progressStatusLabel.Refresh();
-                }
-                /*
-                foreach (int i in objects.Keys.OrderBy(a => a))
-                {
-                    var hitbox = objects[i].Item2.group2Entry;
-                    Console.WriteLine("Object " + i + ", first found in " + objects[i].Item1 + ": group 0 = " + hitbox.hitboxShape + "; {" + hitbox.unknownFloat2 + ", " + hitbox.unknownFloat3 + ", " + hitbox.unknownFloat3 + "}; id 1 = " + hitbox.unknownInt5 + "; isolated float = " + hitbox.unknownFloat6 + "; last value = " + hitbox.unknownInt9);
-                }*/
+                    return written;
+                }, token);
+            }
+            catch (OperationCanceledException)
+            {
+                wasCancelled = true;
+            }
+            finally
+            {
+                catalogueScanCts.Dispose();
+                catalogueScanCts = null;
+
+                actionProgressBar.Value = 0;
+                progressStatusLabel.Text = "";
+                progressStatusLabel.Refresh();
+            }
+
+            if (wasCancelled)
+            {
+                MessageBox.Show(
+                    "Scan cancelled. A partial report was written to:\n\n" + outputFileName,
+                    "List All Monster Layouts",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            if (layoutsWritten == 0)
+            {
+                MessageBox.Show(
+                    $"Scanned {afsFiles.Count} AFS file(s) but no monster layouts " +
+                    "were detected.",
+                    "List All Monster Layouts",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"Wrote {layoutsWritten} monster layout(s) from {afsFiles.Count} " +
+                    $"AFS file(s) to:\n\n{outputFileName}",
+                    "List All Monster Layouts",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
         }
 

@@ -259,10 +259,84 @@ namespace PSULib.FileClasses.Archives
             }
         }
 
+        // Manifest filename used by ResolveFileOrder to override the default
+        // alphabetical ordering when packing a directory into an AFS archive.
+        private const string OrderManifestName = "_afs_order.txt";
+
+        /// <summary>
+        /// Resolves the order in which files from <paramref name="directoryName"/> should be
+        /// written into the AFS. If a manifest file named <see cref="OrderManifestName"/>
+        /// is present in the directory, its contents (one filename per line) determine the
+        /// order. Otherwise, files are returned in case-insensitive alphabetical order.
+        ///
+        /// The manifest itself is excluded from the returned list, and lines beginning
+        /// with '#' or empty/whitespace-only lines are ignored.
+        /// </summary>
+        private static string[] ResolveFileOrder(string directoryName)
+        {
+            string[] onDisk = Directory.GetFiles(directoryName);
+
+            // Filter out the manifest from "real" files regardless of whether we use it.
+            string manifestPath = Path.Combine(directoryName, OrderManifestName);
+            string[] candidates = onDisk
+                .Where(p => !string.Equals(Path.GetFileName(p), OrderManifestName, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            if (!File.Exists(manifestPath))
+            {
+                // Default ordering: case-insensitive alphabetical, full paths.
+                Array.Sort(candidates, StringComparer.OrdinalIgnoreCase);
+                return candidates;
+            }
+
+            // Read manifest lines, stripping BOM, comments, and blanks.
+            List<string> requestedNames = new List<string>();
+            foreach (string rawLine in File.ReadAllLines(manifestPath))
+            {
+                string line = rawLine.Trim().TrimStart('\uFEFF');
+                if (line.Length == 0 || line[0] == '#')
+                    continue;
+                requestedNames.Add(line);
+            }
+
+            // Build a name -> full path lookup for what's actually on disk.
+            Dictionary<string, string> diskByName = candidates.ToDictionary(
+                p => Path.GetFileName(p),
+                p => p,
+                StringComparer.OrdinalIgnoreCase);
+
+            // Verify the manifest and the directory describe the same set of files.
+            HashSet<string> manifestSet = new HashSet<string>(requestedNames, StringComparer.OrdinalIgnoreCase);
+            HashSet<string> diskSet = new HashSet<string>(diskByName.Keys, StringComparer.OrdinalIgnoreCase);
+
+            string[] missingFromDisk = manifestSet.Except(diskSet).ToArray();
+            string[] missingFromManifest = diskSet.Except(manifestSet).ToArray();
+
+            if (missingFromDisk.Length > 0 || missingFromManifest.Length > 0)
+            {
+                StringBuilder problem = new StringBuilder();
+                problem.Append("Manifest '").Append(OrderManifestName)
+                       .Append("' in '").Append(directoryName).Append("' does not match directory contents.");
+                if (missingFromDisk.Length > 0)
+                    problem.Append(" Listed in manifest but not on disk: ")
+                           .Append(string.Join(", ", missingFromDisk)).Append('.');
+                if (missingFromManifest.Length > 0)
+                    problem.Append(" Present on disk but absent from manifest: ")
+                           .Append(string.Join(", ", missingFromManifest)).Append('.');
+                throw new InvalidOperationException(problem.ToString());
+            }
+
+            // Map manifest order to full paths.
+            string[] ordered = new string[requestedNames.Count];
+            for (int i = 0; i < requestedNames.Count; i++)
+                ordered[i] = diskByName[requestedNames[i]];
+
+            return ordered;
+        }
+
         public static void createFromDirectory(string directoryName, string outputName)
         {
-            string[] filenames = Directory.GetFiles(directoryName);
-            Array.Sort(filenames);
+            string[] filenames = ResolveFileOrder(directoryName);
             int fileCount = filenames.Length;
             FileStream outStream = new FileStream(outputName, FileMode.Create);
             BinaryWriter outWriter = new BinaryWriter(outStream);

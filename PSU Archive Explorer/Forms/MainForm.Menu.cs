@@ -432,6 +432,41 @@ namespace psu_archive_explorer
             Close();
         }
 
+        /// <summary>
+        /// Launches a new, independent instance of PSU Archive Explorer so the user
+        /// can have multiple sessions open at once (e.g. compare two archives side
+        /// by side). The new process is fully independent and the current session
+        /// is unaffected if it is closed.
+        /// </summary>
+        private void openNewSessionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                if (string.IsNullOrEmpty(exePath) || !System.IO.File.Exists(exePath))
+                {
+                    // Fallback for unusual deployment scenarios (single-file publish, etc.)
+                    exePath = Application.ExecutablePath;
+                }
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = exePath,
+                    UseShellExecute = true,
+                    WorkingDirectory = System.IO.Path.GetDirectoryName(exePath) ?? string.Empty,
+                };
+                System.Diagnostics.Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Could not start a new session:\n" + ex.Message,
+                    "Open New Session",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
         private void insertNMLLFileToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (loadedContainer is NblLoader && treeView1.SelectedNode != null && treeView1.SelectedNode.Level == 1)
