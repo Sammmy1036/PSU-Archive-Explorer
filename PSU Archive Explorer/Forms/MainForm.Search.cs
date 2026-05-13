@@ -38,12 +38,65 @@ namespace psu_archive_explorer
         private const string SearchPlaceholder = "Search files...";
         private bool searchBoxHasRealText = false;
 
+        // Case-insensitive compare to whether the box currently shows the
+        // placeholder. We compare like this because the Designer-set initial
+        // text ("Search Files...") was historically inconsistent with the
+        // SearchPlaceholder constant's casing ("Search files..."), so a strict
+        // == comparison failed on first launch and broke all the placeholder
+        // logic. The boolean check on searchBoxHasRealText is the source of
+        // truth; this is just the visual check.
+        private bool ShowingPlaceholder()
+        {
+            return !searchBoxHasRealText
+                && string.Equals(searchBox.Text, SearchPlaceholder,
+                                 System.StringComparison.OrdinalIgnoreCase);
+        }
+
         private void searchBox_Enter(object sender, EventArgs e)
         {
-            if (!searchBoxHasRealText)
+            // The placeholder text itself is cleared on the user's first real
+            // keystroke (see searchBox_KeyDown), not on focus, so that
+            // programmatic / incidental focus changes — e.g. focus being
+            // restored to the search box after a cancelled File ▸ Open
+            // dialog, after dismissing a MessageBox, Alt+Tabbing back into
+            // the app, the form's default tab order kicking in on launch,
+            // etc. — don't wipe the "Search files..." hint before the user
+            // has actually decided to search.
+            //
+            // WinForms also auto-selects all of a TextBox's text when it
+            // gains focus via tab / programmatic focus, which paints the
+            // placeholder in highlight blue and visually misleads the user.
+            // Hook Application.Idle once to collapse the selection AFTER all
+            // pending focus / selection messages have been processed by Win32.
+            if (ShowingPlaceholder())
             {
-                searchBox.Text = "";
-                searchBox.ForeColor = System.Drawing.SystemColors.WindowText;
+                EventHandler idleHandler = null;
+                idleHandler = (s, args) =>
+                {
+                    Application.Idle -= idleHandler;
+                    if (searchBox != null
+                        && !searchBox.IsDisposed
+                        && searchBox.Focused
+                        && ShowingPlaceholder())
+                    {
+                        searchBox.SelectionStart = searchBox.TextLength;
+                        searchBox.SelectionLength = 0;
+                    }
+                };
+                Application.Idle += idleHandler;
+            }
+        }
+
+        // Belt-and-braces: if anything still manages to select the
+        // placeholder text, clicking into the box will also collapse the
+        // selection. MouseUp fires after the textbox processes the click
+        // and any select-all-on-focus, so we win the race here.
+        private void searchBox_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (ShowingPlaceholder() && searchBox.SelectionLength > 0)
+            {
+                searchBox.SelectionStart = searchBox.TextLength;
+                searchBox.SelectionLength = 0;
             }
         }
 
@@ -63,15 +116,32 @@ namespace psu_archive_explorer
             {
                 e.SuppressKeyPress = true;
                 e.Handled = true;
+                return;
+            }
+
+            // First real keystroke while the placeholder is showing: clear it
+            // and switch the text color so the user's input is visible.
+            // We ignore pure modifier presses (Shift / Ctrl / Alt on their own)
+            // so e.g. tapping Shift in preparation to type doesn't blank the
+            // placeholder without producing any visible character.
+            if (ShowingPlaceholder()
+                && e.KeyCode != Keys.ShiftKey
+                && e.KeyCode != Keys.ControlKey
+                && e.KeyCode != Keys.Menu)
+            {
+                searchBox.Text = "";
+                searchBox.ForeColor = System.Drawing.SystemColors.WindowText;
             }
         }
 
         private void searchBox_TextChanged(object sender, EventArgs e)
         {
-            if (!searchBox.Focused && searchBox.Text == SearchPlaceholder) return;
+            if (!searchBox.Focused
+                && string.Equals(searchBox.Text, SearchPlaceholder, System.StringComparison.OrdinalIgnoreCase))
+                return;
 
             searchBoxHasRealText = !string.IsNullOrEmpty(searchBox.Text)
-                                   && searchBox.Text != SearchPlaceholder;
+                                   && !string.Equals(searchBox.Text, SearchPlaceholder, System.StringComparison.OrdinalIgnoreCase);
 
             if (searchDebounceTimer == null)
             {
@@ -235,6 +305,46 @@ namespace psu_archive_explorer
         }
 
         /// <summary>
+        /// Modern Vista-style folder picker. Use this instead of the legacy
+        /// FolderBrowserDialog (the tiny tree-view one) so users get the
+        /// full Explorer chrome — sidebar, breadcrumbs, search box, drive
+        /// list, the works.
+        /// </summary>
+        /// <param name="title">Title text shown at the top of the dialog.
+        /// Should describe what the user is picking, e.g. "Select folder
+        /// containing weapon param text files".</param>
+        /// <param name="selectedPath">On success, the absolute path the user
+        /// chose. Null on cancel.</param>
+        /// <returns>True if the user picked a folder, false if they cancelled.</returns>
+        private bool PromptForFolder(string title, out string selectedPath)
+        {
+            using (var dlg = new CommonOpenFileDialog())
+            {
+                dlg.IsFolderPicker = true;
+                dlg.Title = title;
+                dlg.EnsurePathExists = true;
+                dlg.AllowNonFileSystemItems = false;
+
+                // If we know where the game lives, pre-select that as the
+                // starting location it's almost certainly where the user
+                // wants to be browsing for archive folders.
+                if (!string.IsNullOrEmpty(gameDirectory) && Directory.Exists(gameDirectory))
+                {
+                    dlg.InitialDirectory = gameDirectory;
+                }
+
+                if (dlg.ShowDialog() == CommonFileDialogResult.Ok)
+                {
+                    selectedPath = dlg.FileName;
+                    return true;
+                }
+
+                selectedPath = null;
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Returns the display name we want to show in the search results
         /// "Filename" column. For a hashed ADX whose hash exists in
         /// <see cref="AdxHashMap"/>, this is the friendly name from the map
@@ -288,6 +398,19 @@ namespace psu_archive_explorer
         /// </summary>
         private void WireSearchFocusDrop()
         {
+            // Normalize the placeholder text on startup. The Designer historically
+            // had this with different casing ("Search Files...") than our constant
+            // ("Search files..."), which broke every == comparison and let the
+            // OS-level select-all on focus paint the placeholder in highlight
+            // blue. Force them into sync so casing drift in the Designer can't
+            // cause that class of bug again.
+            if (string.Equals(searchBox.Text, SearchPlaceholder, System.StringComparison.OrdinalIgnoreCase))
+            {
+                searchBox.Text = SearchPlaceholder;
+                searchBox.ForeColor = System.Drawing.Color.Gray;
+                searchBoxHasRealText = false;
+            }
+
             // The form itself (clicks on the bare form background).
             this.MouseDown += DeadSpace_MouseDown;
 
@@ -296,6 +419,12 @@ namespace psu_archive_explorer
             // the user is "clicking off" the search box.
             splitContainer1.Panel1.MouseDown += DeadSpace_MouseDown;
             splitContainer1.Panel2.MouseDown += DeadSpace_MouseDown;
+
+            // Collapse any auto-selected placeholder text when the user
+            // clicks into the search box. See searchBox_MouseUp for why this
+            // is needed in addition to the Application.Idle hook in
+            // searchBox_Enter.
+            searchBox.MouseUp += searchBox_MouseUp;
 
             // The tree view itself doesn't need this it already takes focus on
             // click. Same with searchResults, the buttons, etc.

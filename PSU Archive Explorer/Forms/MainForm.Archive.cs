@@ -68,6 +68,25 @@ namespace psu_archive_explorer
                         ClearRightPanel();
                         addChildFiles(treeNodeCollection, loadedContainer);
                         isValidArchive = true;
+
+                        // If the AFS is purely audio/video (every entry is .adx
+                        // or .sfd), the toolbar's edit operations (Set Quest /
+                        // Add File / Set Zone / Add Zone / Zone selector) don't
+                        // apply — those are meaningful only against a real game
+                        // AFS containing zones and quest data. Downgrade the
+                        // enabled state we just set so the user doesn't see
+                        // clickable buttons that would corrupt the file.
+                        //
+                        // Filename-only check (no content sniffing) because
+                        // large audio AFS containers can have hundreds of
+                        // entries and we don't want to pay a per-entry byte
+                        // read on archive open. Hash-named ADX/SFD entries
+                        // without an extension would slip through, but real
+                        // AFS files in this game use proper filenames inside.
+                        if (IsAllAdxOrSfdAfs(loadedContainer))
+                        {
+                            setAFSEnabled(false);
+                        }
                     }
                     else if (BitConverter.ToInt16(formatName, 0) == 0x50AF)
                     {
@@ -95,6 +114,42 @@ namespace psu_archive_explorer
             setZoneButton.Enabled = isActive;
             addFileButton.Enabled = isActive;
             setQuestButton.Enabled = isActive;
+        }
+
+        /// <summary>
+        /// Returns true iff every entry in the given container has an .adx or
+        /// .sfd filename extension. Used to detect AFS containers that are
+        /// pure audio/video packs (no zones, no quests, no files for the AFS
+        /// toolbar to operate on).
+        ///
+        /// Empty containers return false — an empty AFS could legitimately be
+        /// the destination of an "Add File" / "Add Zone" operation, so we
+        /// want the toolbar to stay enabled for those. The "all audio/video"
+        /// determination requires at least one entry to actually be all of.
+        ///
+        /// Filename-only check on purpose: content sniffing every entry of a
+        /// large audio AFS on load would add noticeable latency, and real
+        /// game AFS files in this codebase use proper filenames for their
+        /// entries — the hash-named-without-extension case is a single-file
+        /// fake-archive scenario, handled separately in OpenSingleFileAsAdx.
+        /// </summary>
+        private static bool IsAllAdxOrSfdAfs(ContainerFile container)
+        {
+            if (container == null) return false;
+
+            List<string> names;
+            try { names = container.getFilenames(); }
+            catch { return false; }
+            if (names == null || names.Count == 0) return false;
+
+            foreach (string name in names)
+            {
+                if (string.IsNullOrEmpty(name)) return false;
+                bool isAdx = name.EndsWith(".adx", StringComparison.OrdinalIgnoreCase);
+                bool isSfd = name.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase);
+                if (!isAdx && !isSfd) return false;
+            }
+            return true;
         }
 
         /// <summary>

@@ -237,7 +237,7 @@ namespace psu_archive_explorer
                         TextAlign = ContentAlignment.MiddleCenter,
                         Font = new Font("Segoe UI", 10.5f),
                         Text = $"Preview unavailable due to file size.\n\n" +
-                               "• Right click the file and Extract Selected to save it.\n" +
+                               "• Right click the file and Export Selected to save it.\n" +
                                "• .sfd videos can be opened with VLC Media Player.\n\n" +
                                $"File name: {displayName}"
                     };
@@ -264,12 +264,19 @@ namespace psu_archive_explorer
 
         private void createAFSToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK && saveFileDialog1.ShowDialog() == DialogResult.OK)
-            {
-                string folderToOpen = folderBrowserDialog1.SelectedPath;
-                string fileToSave = saveFileDialog1.FileName;
-                AfsLoader.createFromDirectory(folderToOpen, fileToSave);
-            }
+            // Step 1: ask for the folder whose contents will be packed into
+            // the AFS, using the modern Vista-style folder picker.
+            if (!PromptForFolder("Select the folder whose contents will be packed into the AFS", out string folderToOpen))
+                return;
+
+            // Step 2: ask where to save the resulting AFS file.
+            // SaveFileDialog already renders in the modern style on Vista+
+            // (its AutoUpgradeEnabled default is true), so nothing to do here.
+            saveFileDialog1.Title = "Save the new AFS file as";
+            if (saveFileDialog1.ShowDialog() != DialogResult.OK)
+                return;
+
+            AfsLoader.createFromDirectory(folderToOpen, saveFileDialog1.FileName);
         }
 
         private void replaceFileTreeContextItem_Click(object sender, EventArgs e)
@@ -410,51 +417,417 @@ namespace psu_archive_explorer
 
         private void exportAllWeaponsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (loadedContainer is NblLoader && loadedContainer.getFilenames().Count > 0)
+            // Need *something* loaded with files in it. We support two cases:
+            //   1) The loaded container is itself an NBL  → look at its NMLL chunk directly.
+            //   2) The loaded container holds NBLs inside (e.g. an AFS hash file)
+            //      → walk each child NBL and export from each one's NMLL chunk
+            //        into its own subfolder, so re-import can target the right NBL later.
+            if (loadedContainer == null || loadedContainer.getFilenames().Count == 0)
             {
-                if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
+                MessageBox.Show(
+                    "No archive is currently loaded.\r\n\r\n" +
+                    "Weapon export reads itemWeaponParam_*.xnr files from the NMLL chunk " +
+                    "of an NBL archive. Open an NBL or an AFS containing NBLs first.",
+                    "Nothing to Export",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            if (!PromptForFolder("Select the folder to export weapon param text files into", out string exportFolder))
+                return;
+
+            int exportedCount = 0;          // total weapon files written
+            int nblsWithWeapons = 0;        // distinct NBLs that contributed at least one
+            var errors = new List<string>(); // per-NBL load errors, surfaced at the end
+
+            if (loadedContainer is NblLoader topNbl)
+            {
+                // Case 1: a single NBL is loaded directly.
+                int wrote = ExportWeaponsFromNbl(topNbl, exportFolder, errors);
+                exportedCount += wrote;
+                if (wrote > 0) nblsWithWeapons++;
+            }
+            else
+            {
+                // Case 2: a container of containers (AFS-style). Walk children,
+                // and for each one that turns out to be an NBL, export its
+                // weapons into a subfolder named after the child entry so
+                // results from different NBLs don't collide.
+                var childNames = loadedContainer.getFilenames();
+                for (int i = 0; i < childNames.Count; i++)
                 {
-                    //getFilenames is relatively expensive.
-                    NblChunk nmllChunk = (NblChunk)loadedContainer.getFileParsed(0);
-                    var nmllFilenames = nmllChunk.getFilenames();
-                    foreach (string filename in nmllFilenames)
+                    string childName = childNames[i];
+                    NblLoader childNbl = null;
+                    try
                     {
-                        if (filename.Contains("itemWeaponParam") && nmllChunk.getFileParsed(filename) is WeaponParamFile weaponParamFile)
-                        {
-                            MemoryStream memStream = new MemoryStream();
-                            weaponParamFile.saveTextFile(memStream);
-                            File.WriteAllBytes(folderBrowserDialog1.SelectedPath + "\\" + filename + ".txt", memStream.ToArray());
-                        }
+                        childNbl = loadedContainer.getFileParsed(i) as NblLoader;
                     }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"{childName}: failed to parse ({ex.Message})");
+                        continue;
+                    }
+                    if (childNbl == null)
+                        continue; // not an NBL, skip silently
+
+                    // Use the child entry name (sans .nbl) as the subfolder.
+                    // Sanitize defensively — archive filenames are normally
+                    // well-behaved but we don't want a stray character to
+                    // blow up Path.Combine on someone.
+                    string subfolderName = SanitizeFolderName(
+                        Path.GetFileNameWithoutExtension(childName));
+                    string nblFolder = Path.Combine(exportFolder, subfolderName);
+
+                    // Only create the subfolder if this NBL actually has
+                    // weapons — no empty folders left lying around for NBLs
+                    // that don't contain any weapon params.
+                    int wrote = ExportWeaponsFromNbl(childNbl, nblFolder, errors,
+                        ensureFolderExists: true);
+                    exportedCount += wrote;
+                    if (wrote > 0) nblsWithWeapons++;
                 }
             }
+
+            // Report outcome. Previously the operation completed silently
+            // which made the menu item look broken when nothing matched.
+            if (exportedCount == 0)
+            {
+                string body =
+                    "No weapon parameter files were found.\r\n\r\n" +
+                    "Weapon export looks for files named 'itemWeaponParam_*.xnr' inside " +
+                    "the NMLL chunk of any NBL archive in the loaded container.";
+                if (errors.Count > 0)
+                {
+                    body += "\r\n\r\nSome children couldn't be inspected:\r\n  " +
+                            string.Join("\r\n  ", errors.Take(5)) +
+                            (errors.Count > 5 ? $"\r\n  ... ({errors.Count - 5} more)" : "");
+                }
+                MessageBox.Show(body, "No Weapons Found",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                string summary =
+                    $"Exported {exportedCount} weapon parameter file{(exportedCount == 1 ? "" : "s")} " +
+                    $"from {nblsWithWeapons} NBL archive{(nblsWithWeapons == 1 ? "" : "s")} to:\r\n\r\n{exportFolder}";
+                if (errors.Count > 0)
+                {
+                    summary += $"\r\n\r\n{errors.Count} child{(errors.Count == 1 ? "" : "ren")} couldn't be inspected " +
+                               "(likely not NBL archives or corrupted entries).";
+                }
+                MessageBox.Show(summary, "Export Complete",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        /// <summary>
+        /// Export every itemWeaponParam_*.xnr from <paramref name="nbl"/>'s NMLL
+        /// chunk into <paramref name="destFolder"/> as .txt files. Returns the
+        /// number of files written. Errors are appended to <paramref name="errors"/>
+        /// rather than thrown so a single bad NBL doesn't abort a multi-NBL export.
+        /// </summary>
+        /// <param name="ensureFolderExists">
+        /// When true (used for per-NBL subfolders), the folder is created lazily
+        /// on the first matching file. Avoids creating empty subfolders for
+        /// NBLs that contain no weapons.
+        /// </param>
+        private int ExportWeaponsFromNbl(NblLoader nbl, string destFolder,
+            List<string> errors, bool ensureFolderExists = false)
+        {
+            int wrote = 0;
+            NblChunk nmllChunk;
+            try
+            {
+                nmllChunk = (NblChunk)nbl.getFileParsed(0);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{nbl.filename ?? "(unnamed NBL)"}: couldn't read NMLL chunk ({ex.Message})");
+                return 0;
+            }
+
+            var nmllFilenames = nmllChunk.getFilenames();
+            foreach (string filename in nmllFilenames)
+            {
+                if (!filename.Contains("itemWeaponParam"))
+                    continue;
+                if (!(nmllChunk.getFileParsed(filename) is WeaponParamFile weaponParamFile))
+                    continue;
+
+                if (ensureFolderExists && wrote == 0)
+                {
+                    try { Directory.CreateDirectory(destFolder); }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"{nbl.filename ?? "(unnamed NBL)"}: couldn't create folder '{destFolder}' ({ex.Message})");
+                        return 0;
+                    }
+                }
+
+                MemoryStream memStream = new MemoryStream();
+                weaponParamFile.saveTextFile(memStream);
+                File.WriteAllBytes(Path.Combine(destFolder, filename + ".txt"), memStream.ToArray());
+                wrote++;
+            }
+            return wrote;
+        }
+
+        /// <summary>
+        /// Replace any character that's invalid in a Windows folder name with '_'.
+        /// Archive filenames are normally safe but we don't want a stray ':' or
+        /// '*' (or an empty string) to crash Path.Combine.
+        /// </summary>
+        private static string SanitizeFolderName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "_";
+            var invalid = Path.GetInvalidFileNameChars();
+            var chars = name.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                if (Array.IndexOf(invalid, chars[i]) >= 0)
+                    chars[i] = '_';
+            }
+            return new string(chars);
         }
 
         private void importAllWeaponsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (loadedContainer is NblLoader && loadedContainer.getFilenames().Count > 0)
+            // Mirrors the export contract:
+            //   - If a single NBL is loaded, the folder is treated as a flat
+            //     set of .txt files (back-compat with the original behavior).
+            //   - If an AFS-style container is loaded, each subfolder in the
+            //     picked folder corresponds to a child NBL by name. We match
+            //     subfolder name → child entry name (with .nbl) and import
+            //     the .txt files inside each subfolder into that NBL.
+            if (loadedContainer == null || loadedContainer.getFilenames().Count == 0)
             {
-                if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
-                {
-                    var files = Directory.GetFiles(folderBrowserDialog1.SelectedPath);
-                    //getFilenames is relatively expensive.
-                    var nmllFilenames = ((NblChunk)loadedContainer.getFileParsed(0)).getFilenames();
-                    foreach (string filename in files)
-                    {
-                        if (filename.Contains("itemWeaponParam"))
-                        {
-                            //try replacing .txt with nothing (e.g itemWeaponParam_01DKSword.xnr.txt)
-                            if (!tryImportWeaponTextFile((NblLoader)loadedContainer, nmllFilenames, filename, Path.GetFileName(filename).Replace(".txt", "")))
-                            {
-                                //try replacing .txt with .xnr (e.g itemWeaponParam_01DKSword.txt) -- parser doesn't do this, but other people may.
-                                if (!tryImportWeaponTextFile((NblLoader)loadedContainer, nmllFilenames, filename, Path.GetFileName(filename).Replace(".txt", ".xnr")))
-                                {
+                MessageBox.Show(
+                    "No archive is currently loaded.\r\n\r\n" +
+                    "Weapon import applies edits from text files back to itemWeaponParam_*.xnr " +
+                    "entries in the NMLL chunk of an NBL archive. Open the target NBL (or AFS " +
+                    "containing NBLs) first, then run import.",
+                    "Nothing to Import Into",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
 
-                                }
-                            }
-                        }
-                    }
+            if (!PromptForFolder("Select the folder containing weapon param text files to import", out string importFolder))
+                return;
+
+            int importedCount = 0;
+            int nblsTouched = 0;
+            var skippedFiles = new List<string>();
+            var errors = new List<string>();
+
+            if (loadedContainer is NblLoader topNbl)
+            {
+                // Case 1: a single NBL is loaded. Use the flat-folder layout
+                // for back-compat: every weapon .txt sits directly inside the
+                // chosen folder, no subfolders.
+                int wrote = ImportWeaponsIntoNbl(topNbl, importFolder, skippedFiles, errors);
+                importedCount += wrote;
+                if (wrote > 0) nblsTouched++;
+            }
+            else
+            {
+                // Case 2: AFS-style container. Each direct subfolder corresponds
+                // by name to a child NBL. Build a quick lookup of child NBL
+                // entry names (lowercased, sans .nbl) so subfolder names like
+                // "ob_009_mm_0" match the child entry "ob_009_mm_0.nbl".
+                var childNames = loadedContainer.getFilenames();
+                var childNblIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < childNames.Count; i++)
+                {
+                    string keyWithExt = childNames[i];
+                    string keyNoExt = Path.GetFileNameWithoutExtension(keyWithExt);
+                    // Register both with and without extension so either form works.
+                    if (!childNblIndex.ContainsKey(keyWithExt))
+                        childNblIndex[keyWithExt] = i;
+                    if (!childNblIndex.ContainsKey(keyNoExt))
+                        childNblIndex[keyNoExt] = i;
                 }
+
+                string[] subfolders;
+                try
+                {
+                    subfolders = Directory.GetDirectories(importFolder);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Couldn't read the selected folder:\r\n\r\n{ex.Message}",
+                        "Import Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                if (subfolders.Length == 0)
+                {
+                    MessageBox.Show(
+                        "The selected folder doesn't contain any subfolders.\r\n\r\n" +
+                        "When an AFS (or similar multi-NBL container) is loaded, weapon import " +
+                        "expects one subfolder per target NBL — the same layout 'Export All " +
+                        "Weapons' produces. Each subfolder name should match an NBL entry name " +
+                        "in the archive (e.g. 'ob_009_mm_0' for 'ob_009_mm_0.nbl').",
+                        "No Subfolders Found",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                foreach (string subfolder in subfolders)
+                {
+                    string subfolderName = Path.GetFileName(subfolder);
+                    if (!childNblIndex.TryGetValue(subfolderName, out int childIdx))
+                    {
+                        errors.Add($"'{subfolderName}': no matching NBL in the loaded archive");
+                        continue;
+                    }
+
+                    NblLoader targetNbl;
+                    try
+                    {
+                        targetNbl = loadedContainer.getFileParsed(childIdx) as NblLoader;
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"'{subfolderName}': failed to load target NBL ({ex.Message})");
+                        continue;
+                    }
+                    if (targetNbl == null)
+                    {
+                        errors.Add($"'{subfolderName}': matching entry isn't an NBL");
+                        continue;
+                    }
+
+                    int wrote = ImportWeaponsIntoNbl(targetNbl, subfolder, skippedFiles, errors);
+                    importedCount += wrote;
+                    if (wrote > 0) nblsTouched++;
+                }
+            }
+
+            // Outcome summary. Three meaningful cases.
+            if (importedCount == 0 && skippedFiles.Count == 0 && errors.Count == 0)
+            {
+                MessageBox.Show(
+                    "No weapon parameter text files were found to import.\r\n\r\n" +
+                    "Import looks for files whose names contain 'itemWeaponParam' " +
+                    "(typically produced by 'Export All Weapons'). None were found, so " +
+                    "nothing was imported.",
+                    "No Files to Import",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else if (importedCount == 0)
+            {
+                var sb = new StringBuilder();
+                sb.Append("No weapon parameter files were imported.\r\n\r\n");
+                sb.Append("Check that text filenames correspond to existing " +
+                          "itemWeaponParam_*.xnr entries");
+                if (loadedContainer is NblLoader)
+                {
+                    sb.Append(" in the loaded NBL.");
+                }
+                else
+                {
+                    sb.Append(", and that subfolder names match NBL entry names in the " +
+                              "loaded archive (e.g. 'ob_009_mm_0' for 'ob_009_mm_0.nbl').");
+                }
+                AppendDiagnostics(sb, skippedFiles, errors);
+                MessageBox.Show(sb.ToString(), "No Matches Found",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else
+            {
+                var sb = new StringBuilder();
+                sb.Append($"Imported {importedCount} weapon parameter file{(importedCount == 1 ? "" : "s")} ");
+                sb.Append($"across {nblsTouched} NBL archive{(nblsTouched == 1 ? "" : "s")}.\r\n\r\n");
+                sb.Append("Remember to save the archive to persist these changes.");
+                AppendDiagnostics(sb, skippedFiles, errors);
+                MessageBox.Show(sb.ToString(), "Import Complete",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        /// <summary>
+        /// Import every itemWeaponParam_*.txt file in <paramref name="sourceFolder"/>
+        /// into the NMLL chunk of <paramref name="nbl"/>. Returns the number of
+        /// files successfully imported. Files that don't match an entry are
+        /// appended to <paramref name="skippedFiles"/>; errors go to <paramref name="errors"/>.
+        /// </summary>
+        private int ImportWeaponsIntoNbl(NblLoader nbl, string sourceFolder,
+            List<string> skippedFiles, List<string> errors)
+        {
+            int wrote = 0;
+            string[] files;
+            try
+            {
+                files = Directory.GetFiles(sourceFolder);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"'{Path.GetFileName(sourceFolder)}': couldn't read folder ({ex.Message})");
+                return 0;
+            }
+
+            List<string> nmllFilenames;
+            try
+            {
+                nmllFilenames = ((NblChunk)nbl.getFileParsed(0)).getFilenames();
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"'{nbl.filename ?? Path.GetFileName(sourceFolder)}': couldn't read NMLL chunk ({ex.Message})");
+                return 0;
+            }
+
+            foreach (string filename in files)
+            {
+                if (!filename.Contains("itemWeaponParam"))
+                    continue;
+
+                //try replacing .txt with nothing (e.g itemWeaponParam_01DKSword.xnr.txt)
+                if (tryImportWeaponTextFile(nbl, nmllFilenames, filename,
+                    Path.GetFileName(filename).Replace(".txt", "")))
+                {
+                    wrote++;
+                }
+                //try replacing .txt with .xnr (e.g itemWeaponParam_01DKSword.txt) -- parser doesn't do this, but other people may.
+                else if (tryImportWeaponTextFile(nbl, nmllFilenames, filename,
+                    Path.GetFileName(filename).Replace(".txt", ".xnr")))
+                {
+                    wrote++;
+                }
+                else
+                {
+                    skippedFiles.Add(Path.GetFileName(filename));
+                }
+            }
+            return wrote;
+        }
+
+        /// <summary>
+        /// Tack the skipped-file list and any error messages onto a result
+        /// summary. Caps each section at 5 lines so a runaway count doesn't
+        /// produce a MessageBox you can't read.
+        /// </summary>
+        private static void AppendDiagnostics(StringBuilder sb,
+            List<string> skippedFiles, List<string> errors)
+        {
+            if (skippedFiles.Count > 0)
+            {
+                sb.Append($"\r\n\r\n{skippedFiles.Count} file{(skippedFiles.Count == 1 ? " was" : "s were")} skipped " +
+                          "(no matching entry in the target NBL):\r\n  ");
+                sb.Append(string.Join("\r\n  ", skippedFiles.Take(5)));
+                if (skippedFiles.Count > 5)
+                    sb.Append($"\r\n  ... ({skippedFiles.Count - 5} more)");
+            }
+            if (errors.Count > 0)
+            {
+                sb.Append($"\r\n\r\n{errors.Count} problem{(errors.Count == 1 ? "" : "s")} encountered:\r\n  ");
+                sb.Append(string.Join("\r\n  ", errors.Take(5)));
+                if (errors.Count > 5)
+                    sb.Append($"\r\n  ... ({errors.Count - 5} more)");
             }
         }
 

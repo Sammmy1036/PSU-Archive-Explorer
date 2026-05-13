@@ -191,7 +191,7 @@
             // 
             this.extractAllInFolderToolStripMenuItem.Name = "extractAllInFolderToolStripMenuItem";
             this.extractAllInFolderToolStripMenuItem.Size = new System.Drawing.Size(195, 22);
-            this.extractAllInFolderToolStripMenuItem.Text = "Extract All In Folder";
+            this.extractAllInFolderToolStripMenuItem.Text = "Export All In Folder";
             this.extractAllInFolderToolStripMenuItem.Click += new System.EventHandler(this.extractAllInFolderToolStripMenuItem_Click);
             // 
             // listAllObjparamsToolStripMenuItem
@@ -238,7 +238,7 @@
             this.importAllWeaponsToolStripMenuItem});
             this.extractConvertToolStripMenuItem.Name = "extractConvertToolStripMenuItem";
             this.extractConvertToolStripMenuItem.Size = new System.Drawing.Size(116, 20);
-            this.extractConvertToolStripMenuItem.Text = "Extract";
+            this.extractConvertToolStripMenuItem.Text = "Export";
             // 
             // catalogueToolStripMenuItem
             // 

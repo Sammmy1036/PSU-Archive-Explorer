@@ -164,6 +164,15 @@ namespace psu_archive_explorer
 
                 loadedContainer = null;   // Since there are no real containers for ADX files
 
+                // Disable the AFS-only toolbar (Set Quest / Add File / Set Zone /
+                // Add Zone / Zone selector). The standard archive-open path in
+                // MainForm_Archive.cs calls setAFSEnabled() to put these in the
+                // right state for whatever was loaded, but THIS path bypasses
+                // that helper entirely (loadedContainer is set to null directly).
+                // Without this call, if the previous file was an AFS, the
+                // buttons stay enabled and look clickable on a fake ADX archive.
+                setAFSEnabled(false);
+
                 string fileNameOnDisk = Path.GetFileName(filePath);
 
                 // Hashed ADX files will append .adx to the tree view only

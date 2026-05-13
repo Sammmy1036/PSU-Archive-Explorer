@@ -108,12 +108,104 @@ namespace psu_archive_explorer
         /// there's actually a file selected to view. Wired to Application.Idle
         /// in the constructor so it runs automatically; no need to call this
         /// from every site that touches <see cref="currentRight"/>.
+        ///
+        /// ADX audio and SFD video files are excluded — the hex editor isn't
+        /// useful for these (they have their own dedicated preview panels),
+        /// and offering it just invites confusion. Match the same filename
+        /// check used by treeView1_AfterSelect so the button enables and the
+        /// preview routing agree on what is what.
         /// </summary>
         private void UpdateViewInHexButtonState(object sender, EventArgs e)
         {
             // Cheap to call repeatedly Enabled is a property setter that
             // no-ops if the value isn't actually changing.
-            viewInHexButton.Enabled = currentRight != null;
+            viewInHexButton.Enabled = currentRight != null && !IsHexUnviewable(currentRight);
+        }
+
+        // Cache for the IsHexUnviewable content sniff. The Idle handler can
+        // fire hundreds of times per second, and the content check calls
+        // ToRaw() which can be non-trivial for large files. We only need to
+        // re-evaluate when the selected file actually changes, so key the
+        // cache on reference identity of currentRight.
+        private PsuFile lastUnviewableCheckTarget;
+        private bool lastUnviewableCheckResult;
+
+        /// <summary>
+        /// Returns true for file types we don't want to expose in the hex
+        /// editor. Currently: ADX audio and SFD video. Uses two layers:
+        ///
+        ///   1) Filename match (.adx / .sfd) — fast, covers normal archive entries.
+        ///   2) Content sniff against known magic headers — covers the "fake
+        ///      archive" case where a hashed container holds a single ADX (or
+        ///      SFD) file with no extension, just the hash for a name. The
+        ///      filename check misses those; reading the first few bytes
+        ///      catches them regardless of what they're named.
+        ///
+        /// Results are cached per reference identity of <paramref name="file"/>
+        /// so the Idle handler stays cheap on repeated calls.
+        /// </summary>
+        private bool IsHexUnviewable(PsuFile file)
+        {
+            if (file == null) return false;
+
+            // Reference-identity cache hit. currentRight gets reassigned each
+            // time the user selects a different node, so a reference match
+            // means "same file as last time we asked".
+            if (ReferenceEquals(file, lastUnviewableCheckTarget))
+                return lastUnviewableCheckResult;
+
+            bool result = IsHexUnviewableCore(file);
+
+            lastUnviewableCheckTarget = file;
+            lastUnviewableCheckResult = result;
+            return result;
+        }
+
+        /// <summary>
+        /// The actual decision logic for <see cref="IsHexUnviewable"/>.
+        /// Separated so the caching wrapper stays tiny and the rules stay
+        /// in one obvious place if we ever need to add more file types.
+        /// </summary>
+        private static bool IsHexUnviewableCore(PsuFile file)
+        {
+            // Filename-based check first — cheap, and covers the common case
+            // of files inside an archive where the entry name has the right
+            // extension on it.
+            string name = file.filename;
+            if (!string.IsNullOrEmpty(name))
+            {
+                if (name.EndsWith(".adx", StringComparison.OrdinalIgnoreCase)) return true;
+                if (name.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase)) return true;
+            }
+
+            // Content-based check second — for "fake archive" containers that
+            // hold a single hash-named file with no extension. We don't know
+            // from the filename, so peek at the bytes. ToRaw can be costly
+            // for very large files; in practice it's already cached/lazy on
+            // most PsuFile subclasses, and the result of this whole method
+            // is cached one level up, so we only pay this once per selection.
+            byte[] bytes;
+            try
+            {
+                bytes = file.ToRaw();
+            }
+            catch
+            {
+                return false; // can't sniff → fall back to "viewable"
+            }
+            if (bytes == null || bytes.Length < 4) return false;
+
+            // ADX magic: 0x80 0x00 at the start (the sync word). This is the
+            // canonical CRI ADX header marker used everywhere in the codebase's
+            // existing ADX validation paths.
+            if (bytes[0] == 0x80 && bytes[1] == 0x00) return true;
+
+            // SFD magic: MPEG program stream pack header 0x00 0x00 0x01 0xBA.
+            // SFD is Sofdec, which is a CRI MPEG variant — same pack header.
+            if (bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0x01 && bytes[3] == 0xBA)
+                return true;
+
+            return false;
         }
 
         /// <summary>

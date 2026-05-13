@@ -38,34 +38,236 @@ namespace psu_archive_explorer
             if (loadedContainer == null)
             {
                 MessageBox.Show(
-                    "No archive is currently loaded. Open an NBL archive first, then use " +
-                    "Export Blob to extract its data blob.",
+                    "No archive is currently loaded. Open an NBL archive or an AFS that " +
+                    "contains NBLs first, then use Export Blob to export data blobs.",
                     "Export Blob",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
                 return;
             }
 
-            // Guard: Export Blob is NBL-specific. AFS, raw ADX, etc. don't have
-            // the data-blob layout this operation produces, so tell the user
-            // explicitly rather than silently no-op'ing.
-            if (!(loadedContainer is NblLoader))
-            {
-                MessageBox.Show(
-                    "Export Blob only works with NBL archives. The currently loaded " +
-                    "archive is not an NBL, so there is no data blob to export.",
-                    "Export Blob",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+            // Two supported cases (mirrors Export All Weapons):
+            //   1) loadedContainer is itself an NBL  → export its blob directly
+            //      into the picked folder (back-compat with original behavior).
+            //   2) loadedContainer holds NBLs inside (e.g. an AFS hash file)
+            //      → walk each child NBL and write each one's blob into its
+            //        own subfolder named after the NBL entry.
+            // The "what is a blob?" explanation is part of the prompt below
+            // so users who aren't sure what they're about to extract have
+            // some context before picking a destination.
+            bool isMultiNblContainer = !(loadedContainer is NblLoader);
+
+            string promptMessage = isMultiNblContainer
+                ? "Exporting Data Blobs\r\n\r\n" +
+                  "What is a 'blob'?  Each NBL stores its files inside one big packed data " +
+                  "region. Exporting it gives you the raw, contiguous bytes " +
+                  " before the parser slices them into individual entries.\r\n\r\n" +
+                  "Each NBL's blob will be saved as <nbl_name>.dat directly in the chosen " +
+                  "folder (e.g. ob_000_mh_0.dat). \r\n\r\n" +
+                  "Continue?"
+                : "Exporting Data Blobs\r\n\r\n" +
+                  "What is a 'blob'?  Each NBL stores its files inside one big packed data " +
+                  "region. Exporting it gives you the raw, contiguous bytes " +
+                  " before the parser slices them into individual entries.\r\n\r\n" +
+                  "Each NBL's blob will be saved as <nbl_name>.dat directly in the chosen " +
+                  "folder (e.g. ob_000_mh_0.dat). \r\n\r\n" +
+                  "Continue?";
+
+            var confirm = MessageBox.Show(promptMessage, "Export Blob",
+                MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+            if (confirm != DialogResult.OK)
                 return;
-            }
 
             CommonOpenFileDialog goodOpenFileDialog = new CommonOpenFileDialog();
             goodOpenFileDialog.IsFolderPicker = true;
             goodOpenFileDialog.Title = "Choose a destination folder for the data blob";
-            if (goodOpenFileDialog.ShowDialog() == CommonFileDialogResult.Ok)
+            if (goodOpenFileDialog.ShowDialog() != CommonFileDialogResult.Ok)
+                return;
+
+            string destFolder = goodOpenFileDialog.FileName;
+
+            if (!isMultiNblContainer)
             {
-                ((NblLoader)loadedContainer).exportDataBlob(goodOpenFileDialog.FileName);
+                // Case 1: single NBL. Original behavior, with a confirmation
+                // dialog at the end so the user gets feedback instead of the
+                // operation silently completing.
+                try
+                {
+                    ((NblLoader)loadedContainer).exportDataBlob(destFolder);
+                    MessageBox.Show(
+                        $"Exported data blob to:\r\n\r\n{destFolder}",
+                        "Export Blob Complete",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Failed to export blob:\r\n\r\n{ex.Message}",
+                        "Export Blob Failed",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                return;
+            }
+
+            // Case 2: walk each child entry; for each that parses as an NBL,
+            // export its blob and rename the resulting file to <nbl_name>.dat
+            // directly in the chosen destination folder. The underlying
+            // exportDataBlob writes "extracted.dat" into the folder it's given,
+            // so we route it through a per-NBL temp subfolder and then move
+            // the file up with the right name. The temp folder is removed
+            // afterward so the user sees just the .dat files, not folders.
+            int blobsExported = 0;
+            var errors = new List<string>();
+            // Track names we've already produced so two NBLs that happen to
+            // share a base name (extremely rare in practice) don't clobber
+            // each other. The second one becomes name_1.dat, third name_2.dat.
+            var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            try { Directory.CreateDirectory(destFolder); } catch { /* picked via dialog, should exist */ }
+
+            var childNames = loadedContainer.getFilenames();
+            for (int i = 0; i < childNames.Count; i++)
+            {
+                string childName = childNames[i];
+                NblLoader childNbl = null;
+                try
+                {
+                    childNbl = loadedContainer.getFileParsed(i) as NblLoader;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{childName}: failed to parse ({ex.Message})");
+                    continue;
+                }
+                if (childNbl == null)
+                    continue; // not an NBL, skip silently
+
+                // Build the final filename: <nbl_name>.dat, sanitized for the
+                // file system. Strip the .nbl extension off the child name if
+                // present so we don't end up with "ob_000_mh_0.nbl.dat".
+                string baseName = Path.GetFileNameWithoutExtension(childName);
+                if (string.IsNullOrWhiteSpace(baseName)) baseName = $"nbl_{i}";
+                var invalid = Path.GetInvalidFileNameChars();
+                var sanitized = baseName.ToCharArray();
+                for (int c = 0; c < sanitized.Length; c++)
+                {
+                    if (Array.IndexOf(invalid, sanitized[c]) >= 0) sanitized[c] = '_';
+                }
+                string finalBaseName = new string(sanitized);
+
+                // Collision guard: if a previous NBL already produced this
+                // exact name, suffix with _1, _2, etc. so neither blob is lost.
+                string uniqueBaseName = finalBaseName;
+                int suffix = 1;
+                while (!usedNames.Add(uniqueBaseName))
+                {
+                    uniqueBaseName = finalBaseName + "_" + suffix;
+                    suffix++;
+                }
+                string finalPath = Path.Combine(destFolder, uniqueBaseName + ".dat");
+
+                // Temp folder for this NBL's export. exportDataBlob writes
+                // "extracted.dat" into the folder it's given, so each NBL
+                // needs its own scratch directory. Stash it under destFolder
+                // (rather than %TEMP%) so the work stays on the same volume —
+                // makes the final File.Move a rename rather than a copy.
+                string tempFolder = Path.Combine(destFolder, "__psuae_blob_tmp_" + i);
+
+                try
+                {
+                    if (Directory.Exists(tempFolder))
+                        Directory.Delete(tempFolder, recursive: true);
+                    Directory.CreateDirectory(tempFolder);
+
+                    childNbl.exportDataBlob(tempFolder);
+
+                    // Find what got written. Expecting exactly one file
+                    // ("extracted.dat") but be defensive: if there's more than
+                    // one, that's a contract change worth surfacing.
+                    var produced = Directory.GetFiles(tempFolder);
+                    if (produced.Length == 0)
+                    {
+                        errors.Add($"{childName}: exportDataBlob produced no file");
+                        continue;
+                    }
+                    if (produced.Length > 1)
+                    {
+                        // Multiple files unexpectedly  log and move the
+                        // first one anyway so the user at least gets something.
+                        errors.Add($"{childName}: exportDataBlob produced {produced.Length} files, " +
+                                   $"using '{Path.GetFileName(produced[0])}'");
+                    }
+
+                    // Overwrite any existing file at the destination path —
+                    // File.Move(string, string, bool) is the .NET Core/5+ form;
+                    // for broad framework compat we delete-then-move.
+                    if (File.Exists(finalPath))
+                    {
+                        try { File.Delete(finalPath); }
+                        catch (Exception ex)
+                        {
+                            errors.Add($"{childName}: couldn't overwrite existing '{Path.GetFileName(finalPath)}' ({ex.Message})");
+                            continue;
+                        }
+                    }
+                    File.Move(produced[0], finalPath);
+                    blobsExported++;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{childName}: blob export failed ({ex.Message})");
+                }
+                finally
+                {
+                    // Best-effort cleanup of the temp folder. If this fails
+                    // (file lock, AV scan, whatever), the blob has already
+                    // been moved out, so leaving the empty folder behind is
+                    // harmless — don't escalate it to a user-visible error.
+                    try
+                    {
+                        if (Directory.Exists(tempFolder))
+                            Directory.Delete(tempFolder, recursive: true);
+                    }
+                    catch { /* intentionally ignored */ }
+                }
+            }
+
+            // Outcome summary.
+            if (blobsExported == 0 && errors.Count == 0)
+            {
+                MessageBox.Show(
+                    "No NBL archives were found inside this container, so no blobs were exported.\r\n\r\n" +
+                    "Export Blob walks every child entry and exports the data blob of each one " +
+                    "that's an NBL. The currently loaded container doesn't contain any NBLs.",
+                    "Export Blob — No NBLs Found",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else if (blobsExported == 0)
+            {
+                var sb = new StringBuilder();
+                sb.Append("No data blobs were exported successfully.\r\n\r\n");
+                sb.Append($"{errors.Count} problem{(errors.Count == 1 ? "" : "s")} encountered:\r\n  ");
+                sb.Append(string.Join("\r\n  ", errors.Take(5)));
+                if (errors.Count > 5)
+                    sb.Append($"\r\n  ... ({errors.Count - 5} more)");
+                MessageBox.Show(sb.ToString(),
+                    "Export Blob — Failed",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else
+            {
+                var sb = new StringBuilder();
+                sb.Append($"Exported {blobsExported} data blob{(blobsExported == 1 ? "" : "s")} to:\r\n\r\n{destFolder}");
+                if (errors.Count > 0)
+                {
+                    sb.Append($"\r\n\r\n{errors.Count} child{(errors.Count == 1 ? "" : "ren")} couldn't be exported:\r\n  ");
+                    sb.Append(string.Join("\r\n  ", errors.Take(5)));
+                    if (errors.Count > 5)
+                        sb.Append($"\r\n  ... ({errors.Count - 5} more)");
+                }
+                MessageBox.Show(sb.ToString(),
+                    "Export Blob — Complete",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
