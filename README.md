@@ -22,6 +22,7 @@ New Features
 - Now provides a preview of ADX and DAT Sound Files directly in PSU Archive Explorer prior to export
 - Now provides a preview of SFD Video Files directly in PSU Archive Explorer prior to export
 - Now provides a search bar where you can search directly for files from the hash index
+- Now provides user more information regarding file types and what they do
 - Now provides enhanced parsing for XNCF, XNCP, XNR, and XVR files
 
 Bug Fixes
