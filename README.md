@@ -22,7 +22,7 @@ New Features
 - Now provides a preview of ADX and DAT Sound Files directly in PSU Archive Explorer prior to export
 - Now provides a preview of SFD Video Files directly in PSU Archive Explorer prior to export
 - Now provides a search bar where you can search directly for files from the hash index
-- Now provides enhanced parsing for XNCF, XNCP, and XNR files
+- Now provides enhanced parsing for XNCF, XNCP, XNR, and XVR files
 
 Bug Fixes
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
@@ -33,6 +33,7 @@ Bug Fixes
 - Fixes application from not responding when moving the window on batch
 - Fixes application crash when loading zone .rel files
 - Fixes export dialogue not appearing when exporting SFD videos
+- Fixes close button not working for Animation Hash Window
 
 Updates
 - Updated .NET framework moved to 4.8
