@@ -153,6 +153,37 @@ namespace psu_archive_explorer
         }
 
         /// <summary>
+        /// If <paramref name="filename"/> ends with a partial fragment of
+        /// ".nbl" (i.e. ".n" or ".nb" — case-insensitive), strip that fragment
+        /// and return the remainder; otherwise return the input unchanged.
+        ///
+        /// Used by the truncated-filename visual recovery in addChildFiles:
+        /// when the 32-byte filename slot in an AFS/MiniAFS truncates mid
+        /// extension, the on-disk name keeps the leading dot and as many
+        /// characters of "nbl" as fit. Stripping that partial before we append
+        /// the full ".nbl" gives us a clean display name instead of garbage
+        /// like "foo.nb.nbl" or "bar.n.nbl".
+        ///
+        /// Note: we only treat ".n" / ".nb" as partials. A bare "." at the end
+        /// could just as legitimately mean "filename ended with a period and
+        /// then everything else got cut" — we'd risk eating a real character
+        /// that happens to be a dot, so we leave it alone. The exact-match
+        /// ".nbl" case is handled by the caller's outer EndsWith check, so
+        /// this helper only ever sees non-".nbl"-ending inputs.
+        /// </summary>
+        private static string StripPartialNblSuffix(string filename)
+        {
+            if (string.IsNullOrEmpty(filename)) return filename;
+
+            if (filename.EndsWith(".nb", StringComparison.OrdinalIgnoreCase))
+                return filename.Substring(0, filename.Length - ".nb".Length);
+            if (filename.EndsWith(".n", StringComparison.OrdinalIgnoreCase))
+                return filename.Substring(0, filename.Length - ".n".Length);
+
+            return filename;
+        }
+
+        /// <summary>
         /// Adds a container file's children to a given node collection.
         /// </summary>
         /// <param name="currNode">node collection</param>
@@ -183,6 +214,33 @@ namespace psu_archive_explorer
                         {
                             temp.ForeColor = Color.Green;
                         }
+                    }
+
+                    // Visual recovery for truncated filenames. Both AfsLoader and
+                    // MiniAfsLoader store filenames in 32-byte fixed-width slots,
+                    // so any source filename longer than 32 chars gets clipped on
+                    // disk — e.g. "xf_PlyMotActDat_05_DK_DOUBLESABE_M.nbl" comes
+                    // out as "xf_PlyMotActDat_05_DK_DOUBLESABE" with the .nbl
+                    // extension chopped off. The on-disk data is genuinely
+                    // missing, so we can't recover the original full name, but
+                    // when the entry's CONTENT parses as an NblLoader we can at
+                    // least restore the ".nbl" suffix on the displayed label so
+                    // the user can tell what kind of file it is at a glance.
+                    //
+                    // Truncation can happen mid-extension too. A 33-char
+                    // original name leaves ".nb" at the end after the 32-byte
+                    // clip; a 34-char one leaves ".n". Naively appending ".nbl"
+                    // in those cases produces garbage like ".nb.nbl" or
+                    // ".n.nbl", so strip any trailing partial of ".nbl" first.
+                    //
+                    // Important: this only changes temp.Text (the visible label).
+                    // tag.FileName below stays as the truthful on-disk string so
+                    // save-back paths don't try to write a longer-than-32-byte
+                    // name into the fixed slot and corrupt the file.
+                    if (child is NblLoader
+                        && !filename.EndsWith(".nbl", StringComparison.OrdinalIgnoreCase))
+                    {
+                        temp.Text = StripPartialNblSuffix(filename) + ".nbl";
                     }
                 }
                 else //NBL chunk as parent

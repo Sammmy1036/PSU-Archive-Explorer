@@ -116,10 +116,39 @@ namespace psu_archive_explorer
 
                 string fileName = tag.FileName ?? "Unknown";
 
+                // Filename-based type detection. The .nbl check is supplemented
+                // by a content check further down — AfsLoader and MiniAfsLoader
+                // store filenames in 32-byte fixed-width slots, so any source
+                // filename longer than 32 chars is truncated on disk and the
+                // ".nbl" suffix is the first thing to go. We can't recover the
+                // missing characters, but we can ask the parser whether the
+                // entry's content is actually an NBL and treat it as one.
                 bool isNblFile = fileName.EndsWith(".nbl", StringComparison.OrdinalIgnoreCase);
                 bool isSfdVideo = fileName.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase);
                 bool isAdxFile = fileName.EndsWith(".adx", StringComparison.OrdinalIgnoreCase);
                 bool isDatFile = fileName.EndsWith(".dat", StringComparison.OrdinalIgnoreCase);
+
+                // Content fallback for the NBL case. Both AfsLoader and
+                // MiniAfsLoader eagerly parse their children during load
+                // (populateFile / the corresponding loop), so getFileParsed
+                // here is a property access, not a re-parse — no measurable
+                // cost. Guarded with try/catch because exotic entries may not
+                // parse cleanly and we don't want to crash the tree select.
+                if (!isNblFile)
+                {
+                    try
+                    {
+                        if (parent.getFileParsed(index) is NblLoader)
+                        {
+                            isNblFile = true;
+                        }
+                    }
+                    catch
+                    {
+                        // Fall through — leave isNblFile false and let the
+                        // normal generic-file path handle this entry.
+                    }
+                }
 
                 if (isDatFile)
                 {
@@ -427,7 +456,7 @@ namespace psu_archive_explorer
                 MessageBox.Show(
                     "No archive is currently loaded.\r\n\r\n" +
                     "Weapon export reads itemWeaponParam_*.xnr files from the NMLL chunk " +
-                    "of an NBL archive. Open an NBL or an AFS containing NBLs first.",
+                    "of an NBL archive. Open an NBL — or an AFS containing NBLs — first.",
                     "Nothing to Export",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
