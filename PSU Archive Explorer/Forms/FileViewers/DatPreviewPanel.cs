@@ -50,6 +50,12 @@ namespace psu_archive_explorer
         private bool isUserSeeking = false;
         private bool audioReady = false;
 
+        // Display name of the .dat file currently loaded (e.g. "se_evt_001.dat").
+        // Appended to the Playing / Paused / Stopped status strings so the user
+        // can see what's actually being previewed — mirrors what SfdPreviewPanel
+        // does with its _displayName field.
+        private string _displayName;
+
         // Input source — at most one of these is populated. For the
         // "external provider" mode both are null and we just wait.
         private readonly byte[] datBytes;
@@ -72,6 +78,10 @@ namespace psu_archive_explorer
             : this(infoText)
         {
             this.filePath = filePath;
+            // For the on-disk case we already have the filename — use it for
+            // the playback status strings without forcing the caller to pass
+            // it in separately.
+            try { _displayName = Path.GetFileName(filePath); } catch { }
             BeginLoadDatAsync();
         }
 
@@ -281,6 +291,28 @@ namespace psu_archive_explorer
             catch (InvalidOperationException) { }
         }
 
+        /// <summary>
+        /// Set the display name used in the playback status strings (e.g.
+        /// "Playing foo.dat"). Used by the external-provider construction path
+        /// where the caller knows the filename but it isn't available through
+        /// the panel itself (archive-extracted DATs have no file on disk).
+        /// Safe to call from any thread.
+        /// </summary>
+        public void SetDisplayName(string displayName)
+        {
+            if (IsCancelledOrDisposed) return;
+
+            try
+            {
+                if (InvokeRequired)
+                    Invoke((Action)(() => { if (!IsDisposed) _displayName = displayName; }));
+                else
+                    _displayName = displayName;
+            }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) { }
+        }
+
         private void OnDecodeComplete(DecodeResult result)
         {
             if (IsDisposed || Disposing) return;
@@ -329,13 +361,17 @@ namespace psu_archive_explorer
         {
             if (!audioReady || outputDevice == null || waveReader == null) return;
 
+            // Trailing space + name so "Playing" stays clean when no name is
+            // known. Matches the pattern used by SfdPreviewPanel.
+            string nameSuffix = string.IsNullOrEmpty(_displayName) ? "" : " " + _displayName;
+
             try
             {
                 if (outputDevice.PlaybackState == PlaybackState.Playing)
                 {
                     outputDevice.Pause();
                     btnPlayPause.Text = "▶ Play";
-                    lblStatus.Text = "⏸ Paused";
+                    lblStatus.Text = "⏸ Paused" + nameSuffix;
                     progressTimer.Stop();
                 }
                 else
@@ -345,7 +381,7 @@ namespace psu_archive_explorer
 
                     outputDevice.Play();
                     btnPlayPause.Text = "⏸ Pause";
-                    lblStatus.Text = "▶ Playing...";
+                    lblStatus.Text = "▶ Playing" + nameSuffix;
                     progressTimer.Start();
                 }
             }
@@ -365,7 +401,9 @@ namespace psu_archive_explorer
                 waveReader.Position = 0;
                 trackBarProgress.Value = 0;
                 btnPlayPause.Text = "▶ Play";
-                lblStatus.Text = "Stopped";
+                lblStatus.Text = string.IsNullOrEmpty(_displayName)
+                    ? "Stopped"
+                    : "Stopped " + _displayName;
                 UpdateTimeLabel();
                 progressTimer.Stop();
             }

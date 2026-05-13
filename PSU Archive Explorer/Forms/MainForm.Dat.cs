@@ -90,6 +90,11 @@ namespace psu_archive_explorer
                 $"File name: {fileName}";
 
             var panel = new DatPreviewPanel(infoText, externalProvider: true);
+            // Supply the filename for the playback status strings (e.g.
+            // "Playing AGANA_1.dat"). The external-provider constructor doesn't
+            // get a path to derive this from, so we set it explicitly here —
+            // mirrors how SfdPreviewPanel.LoadSfd captures its display name.
+            panel.SetDisplayName(fileName);
             splitContainer1.Panel2.Controls.Add(panel);
 
             // If the panel gets disposed (e.g. user clicks another node), its

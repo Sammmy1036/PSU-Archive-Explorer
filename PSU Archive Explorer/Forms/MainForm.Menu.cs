@@ -166,10 +166,12 @@ namespace psu_archive_explorer
 
                     if (isNblFile)
                     {
-                        // Title: actual filename (e.g. "ob_000_mh_0.nbl") so
-                        // the user sees which sub-archive they're looking at.
+                        // Title: generic "NBL Archive" label rather than the
+                        // file's name, since the body text below is a general
+                        // description of what an NBL is. Matches the style of
+                        // the NMLL/TMLL chunk info panels above.
                         ShowChunkInfoPanel(
-                            fileName,
+                            "NBL Archive",
                             "NBL Archive (Nu2 Binary Library) is a container holding the structured data.\r\n" +
                             "This data is packed into an NMLL chunk and an optional TMLL chunk.\r\n" +
                             "NBLs are typically nested inside larger AFS containers with many sibling NBLs\r\n\r\n" +

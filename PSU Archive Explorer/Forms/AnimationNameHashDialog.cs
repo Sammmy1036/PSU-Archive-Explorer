@@ -35,5 +35,10 @@ namespace psu_archive_explorer.Forms.FileViewers.Enemies
             int computedHash = PSULib.Support.PsuCrc32.ComputeHash(fileNameTextBox.Text, fileNameTextBox.Text.Length > 4);
             hashOutputTextBox.Text = computedHash.ToString();
         }
+
+        private void closeButton_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
     }
 }

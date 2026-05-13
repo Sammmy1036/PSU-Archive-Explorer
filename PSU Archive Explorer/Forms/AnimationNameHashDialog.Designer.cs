@@ -1,5 +1,4 @@
-﻿
-namespace psu_archive_explorer.Forms.FileViewers.Enemies
+﻿namespace psu_archive_explorer.Forms.FileViewers.Enemies
 {
     partial class AnimationNameHashDialog
     {
@@ -33,12 +32,12 @@ namespace psu_archive_explorer.Forms.FileViewers.Enemies
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.hashOutputTextBox = new System.Windows.Forms.TextBox();
-            this.button2 = new System.Windows.Forms.Button();
+            this.closeButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // fileNameTextBox
             // 
-            this.fileNameTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.fileNameTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.fileNameTextBox.Location = new System.Drawing.Point(12, 29);
             this.fileNameTextBox.Name = "fileNameTextBox";
@@ -66,7 +65,7 @@ namespace psu_archive_explorer.Forms.FileViewers.Enemies
             // 
             // hashOutputTextBox
             // 
-            this.hashOutputTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.hashOutputTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.hashOutputTextBox.Location = new System.Drawing.Point(12, 73);
             this.hashOutputTextBox.Name = "hashOutputTextBox";
@@ -74,23 +73,25 @@ namespace psu_archive_explorer.Forms.FileViewers.Enemies
             this.hashOutputTextBox.Size = new System.Drawing.Size(305, 20);
             this.hashOutputTextBox.TabIndex = 3;
             // 
-            // button2
+            // closeButton
             // 
-            this.button2.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            this.closeButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.button2.Location = new System.Drawing.Point(93, 100);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(124, 23);
-            this.button2.TabIndex = 5;
-            this.button2.Text = "Close";
-            this.button2.UseVisualStyleBackColor = true;
+            this.closeButton.Location = new System.Drawing.Point(93, 100);
+            this.closeButton.Name = "closeButton";
+            this.closeButton.Size = new System.Drawing.Size(124, 23);
+            this.closeButton.TabIndex = 5;
+            this.closeButton.Text = "Close";
+            this.closeButton.UseVisualStyleBackColor = true;
+            this.closeButton.Click += new System.EventHandler(this.closeButton_Click);
             // 
             // AnimationNameHashDialog
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.CancelButton = this.closeButton;
             this.ClientSize = new System.Drawing.Size(329, 135);
-            this.Controls.Add(this.button2);
+            this.Controls.Add(this.closeButton);
             this.Controls.Add(this.hashOutputTextBox);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
@@ -108,6 +109,6 @@ namespace psu_archive_explorer.Forms.FileViewers.Enemies
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TextBox hashOutputTextBox;
-        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.Button closeButton;
     }
 }
