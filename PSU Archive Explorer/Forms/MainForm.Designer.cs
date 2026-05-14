@@ -145,7 +145,7 @@
             this.openNewSessionToolStripMenuItem.Name = "openNewSessionToolStripMenuItem";
             this.openNewSessionToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.N)));
             this.openNewSessionToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
-            this.openNewSessionToolStripMenuItem.Text = "Open New Session";
+            this.openNewSessionToolStripMenuItem.Text = "New Session";
             this.openNewSessionToolStripMenuItem.Click += new System.EventHandler(this.openNewSessionToolStripMenuItem_Click);
             // 
             // exportSelectedFileToolStripMenuItem

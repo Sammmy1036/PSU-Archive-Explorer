@@ -908,7 +908,7 @@ namespace psu_archive_explorer
             {
                 MessageBox.Show(
                     "Could not start a new session:\n" + ex.Message,
-                    "Open New Session",
+                    "New Session",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
             }

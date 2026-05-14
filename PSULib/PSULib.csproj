@@ -59,11 +59,13 @@
   <ItemGroup>
     <Compile Include="FileClasses\Archives\AfsLoader.cs" />
     <Compile Include="FileClasses\Archives\FilenameAwareContainerFile.cs" />
+    <Compile Include="FileClasses\Characters\VanillaPSUSkeleton.cs" />
     <Compile Include="FileClasses\Models\XncfFile.cs" />
     <Compile Include="FileClasses\Models\XncpFile.cs" />
     <Compile Include="FileClasses\Characters\PartsInfoFile.cs" />
     <Compile Include="FileClasses\Enemies\DamageDataFile.cs" />
     <Compile Include="FileClasses\Enemies\EnemySoundEffectFile.cs" />
+    <Compile Include="FileClasses\Models\XnjFile.cs" />
     <Compile Include="FileClasses\Models\XnrFile.cs" />
     <Compile Include="Support\PsuCrc32.cs" />
     <Compile Include="Support\StringUtilities.cs" />

@@ -190,13 +190,37 @@ namespace PSULib.FileClasses.Characters
                         {
                             switch (examinedType)
                             {
-                                case 0x0: // value
+                                case 0x0: // value — 1 short
                                     typeCount = 0x1;
                                     break;
-                                case 0x4: // interpolate
+                                case 0x2: // 4-short key
+                                    // Previously missing. A type-0x2 position
+                                    // frame carries 4 shorts of data. Without
+                                    // this case typeCount stayed 0, so the
+                                    // reader consumed none of those 8 bytes
+                                    // and every subsequent frame in the same
+                                    // bone's list desynced — which is why
+                                    // knee/foot bones (whose lists contain
+                                    // these keys) came out empty or garbage
+                                    // while hip bones, using only types 0x0
+                                    // and 0x4, read fine.
+                                    typeCount = 0x4;
+                                    break;
+                                case 0x4: // interpolate — 3 shorts
                                     typeCount = 0x3;
                                     break;
-                                case 0x8: // reset
+                                case 0x6: // 3-short key (previously missing)
+                                    typeCount = 0x3;
+                                    break;
+                                case 0x8: // reset — 0 shorts
+                                    break;
+                                case 0xA: // reset variant — 0 shorts
+                                          // (previously missing; harmless on
+                                          // its own since typeCount 0 is
+                                          // correct here, but listing it
+                                          // explicitly silences the bogus
+                                          // "unknown type" log line and keeps
+                                          // the table honest)
                                     break;
                                 default:
                                     Console.WriteLine("Unknown type " + examinedType + " detected at " + inReader.BaseStream.Position.ToString("X") + " in iteration " + i);
