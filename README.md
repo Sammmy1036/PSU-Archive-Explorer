@@ -88,6 +88,10 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Decodes and provides preview of SFD video files prior to export.
 <img src="https://i.imgur.com/NJs9NCu.png" width="800">
 
+**NOM Animation Previewer**
+- Decodes and provides preview of NOM Animation files prior to export.
+- <img src="https://i.imgur.com/h6fClPn.mp4" width ="800">
+
 ## Special Thanks
 - **Agrathejagged** — Tenora Works, documentation, and the general footing for all things modding for PSU
 - **VGStream** - KC for PSU AOTI
