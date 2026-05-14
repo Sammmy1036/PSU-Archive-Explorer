@@ -93,10 +93,13 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - **Clementine Team** - Reviving and keeping the game running
 
 ## Included Third-Party Code & Dependencies
+- **Costura.Fody** from Geert van Horrik & Simon Cropp - https://github.com/Fody/Costura
+- **Fody** from The Fody Team - https://github.com/Fody/Fody
 - **GIMSharp from Puyo Tools** - https://github.com/nickworonekin/puyotools
-- **PSU Generic Parser & PSULib** - https://github.com/Agrathejagged/tenora-works
 - **NAudio**: Allows sampling of ADPCM data - https://github.com/naudio/naudio
 - **PL_MPEG**: Allows previewing of SFD video files - https://github.com/phoboslab/pl_mpeg
+- **PSU Generic Parser & PSULib** - https://github.com/Agrathejagged/tenora-works
+- **SharpGLTF.Core, Runtime, and Toolkit** from Vicente Penades - https://github.com/vpenades/SharpGLTF
 - **WPFHexaEditor**: Hex Viewer - https://github.com/abbaye/WpfHexEditorControl
 
 ---
