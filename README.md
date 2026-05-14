@@ -16,6 +16,7 @@
 New Features
 - Now exports ADX formats to WAV
 - Now exports DAT sound formats to WAV
+- Now exports NOM animation files to GLB
 - Now reads/extracts archives which are identified as ADX instead of being read as null
 - Now analyzes ADX mappings file to determine the actual name of certain hashed ADX files
 - Now provides hints which will display if a file cannot be opened and provides possible resolution
@@ -35,11 +36,12 @@ Bug Fixes
 - Fixes application crash when loading zone .rel files
 - Fixes export dialogue not appearing when exporting SFD videos
 - Fixes close button not working for Animation Hash Window
+- Fixes file truncation for certain nbl's larger than 32 bytes
 
 Updates
 - Updated .NET framework moved to 4.8
 - Updated C# language to 7.3
-- Updated PSULib to now support raw byte reads
+- Updated PSULib to now support multiple new file formats
 
 ## How to Use the PSU Archive Explorer
 
@@ -91,10 +93,13 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - **Clementine Team** - Reviving and keeping the game running
 
 ## Included Third-Party Code & Dependencies
+- **Costura.Fody** from Geert van Horrik & Simon Cropp - https://github.com/Fody/Costura
+- **Fody** from The Fody Team - https://github.com/Fody/Fody
 - **GIMSharp from Puyo Tools** - https://github.com/nickworonekin/puyotools
-- **PSU Generic Parser & PSULib** - https://github.com/Agrathejagged/tenora-works
 - **NAudio**: Allows sampling of ADPCM data - https://github.com/naudio/naudio
 - **PL_MPEG**: Allows previewing of SFD video files - https://github.com/phoboslab/pl_mpeg
+- **PSU Generic Parser & PSULib** - https://github.com/Agrathejagged/tenora-works
+- **SharpGLTF.Core, Runtime, and Toolkit** from Vicente Penades - https://github.com/vpenades/SharpGLTF
 - **WPFHexaEditor**: Hex Viewer - https://github.com/abbaye/WpfHexEditorControl
 
 ---
