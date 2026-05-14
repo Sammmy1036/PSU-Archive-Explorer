@@ -91,6 +91,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 **NOM Animation Previewer**
 - Decodes and provides preview of NOM Animation files prior to export.
 <img src="https://i.imgur.com/VOOMtsa.gif" width="800">
+<img src="docs/nom_preview.gif" width="800">
 
 ## Special Thanks
 - **Agrathejagged** — Tenora Works, documentation, and the general footing for all things modding for PSU
