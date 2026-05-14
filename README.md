@@ -22,9 +22,10 @@ New Features
 - Now provides hints which will display if a file cannot be opened and provides possible resolution
 - Now provides a preview of ADX and DAT Sound Files directly in PSU Archive Explorer prior to export
 - Now provides a preview of SFD Video Files directly in PSU Archive Explorer prior to export
+- Now provides preview of NOM Animation Files directly in PSU Archive Explorer prior to export
 - Now provides a search bar where you can search directly for files from the hash index
 - Now provides user more information regarding file types and what they do
-- Now provides enhanced parsing for XNCF, XNCP, XNR, and XVR files
+- Now provides enhanced parsing for XNCF, XNCP, XNJ, XNR (UI Related), and XVR files
 
 Bug Fixes
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
@@ -67,7 +68,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **XNA**   | Bone/skeleton name files |
 | **XNCP**  | UI layout and control files (HUD, menus, interfaces) |
 | **XNCF**  | Bitmap font tables that map characters to subimages in a paired XNCP atlas (HUD, menus, interfaces) |
-| **XNJ**   | 3D model files |
+| **XNJ**   | 3D model files, Actual Bones/Skeleton |
 | **XNM**   | Model material and mesh data (usually paired with XNJ) |
 | **XNR**   | Parameter/data table files (UI/HUD Scaling, item stats, weapons, enemy drops, skills, technics, AI, etc.) |
 | **XNT**   | Texture list / material mapping files (links texture slots in models to actual XVR textures) |
