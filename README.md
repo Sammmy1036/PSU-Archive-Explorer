@@ -108,4 +108,5 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - **WPFHexaEditor**: Hex Viewer - https://github.com/abbaye/WpfHexEditorControl
 
 ---
+<a href="https://github.com/Sammmy1036/PSU-Archive-Explorer"> PSU Archive Explorer</a>
 
