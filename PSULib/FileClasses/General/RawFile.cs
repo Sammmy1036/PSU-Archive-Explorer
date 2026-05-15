@@ -36,18 +36,18 @@ namespace PSULib.FileClasses.General
 
             //Okay, now check if these actually make sense...
             bool success = true;
-            if(testChunkSize > 1024) //never actually seen this above like 0x60
+            if (testChunkSize > 1024) //never actually seen this above like 0x60
             {
                 success = false;
             }
             //Pointers and file contents must fit in the saved data.
             //Being _very_ generous with buffer length
-            if(pointerCount < 0 || fileLength < 0 || (fileLength + 0x60 + pointerCount * 4) > inStream.Length || (fileLength + 0x60 + pointerCount * 4 + 0x200) < inStream.Length)
+            if (pointerCount < 0 || fileLength < 0 || (fileLength + 0x60 + pointerCount * 4) > inStream.Length || (fileLength + 0x60 + pointerCount * 4 + 0x200) < inStream.Length)
             {
                 success = false;
             }
             //If the file validates, load it as normal.
-            if(success)
+            if (success)
             {
                 fileheader = initialHeader;
                 chunkSize = testChunkSize;
@@ -137,7 +137,14 @@ namespace PSULib.FileClasses.General
         public byte[] WriteToBytes(bool writeMetaData = false)
         {
             List<byte> output = new List<byte>();
-            byte[] toSave = fileContents;
+            // fileContents can legitimately be null: the RawFile(Stream, ...)
+            // constructor only assigns it inside its `if(success)` validation
+            // block, so an entry that failed those sanity checks (e.g. a very
+            // small header-only file) reaches here with a null fileContents.
+            // Treat that as an empty payload rather than dereferencing null —
+            // every use of `toSave` below (toSave.Length, AddRange(toSave))
+            // would otherwise throw a NullReferenceException.
+            byte[] toSave = fileContents ?? new byte[0];
             string fileNameSansPath = Path.GetFileName(filename);
 
             if (writeMetaData == true)

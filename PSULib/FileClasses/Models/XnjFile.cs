@@ -99,10 +99,19 @@ namespace PSULib.FileClasses.Models
         /// <summary>
         /// Walks the file, locates the NXOB chunk, and parses every bone
         /// record it finds there.
+        ///
+        /// Robustness change: rather than trusting that the first bone record
+        /// sits at a fixed nxobPos + 0x20, we scan forward from the chunk for
+        /// the first offset that passes LooksLikeBoneRecord. Some XNJ variants
+        /// (PSU's map/scene XNJs in particular) have a slightly different NXOB
+        /// chunk header length, which pushed the first record off the assumed
+        /// 0x20 and caused a hard "No bone records recognized" failure. The
+        /// scan keeps the common case identical while tolerating the variants.
         /// </summary>
         private void Parse(byte[] rawData, byte[] inHeader)
         {
             byte[] buf = ReconstructFile(rawData, inHeader);
+            reconstructedRaw = buf;   // cache for ToRaw() / hex viewer
             if (buf == null || buf.Length < 0x100)
             {
                 ParseError = "Buffer too small to contain XNJ header";
@@ -120,11 +129,47 @@ namespace PSULib.FileClasses.Models
                 return;
             }
 
-            // The first bone record starts 0x20 bytes after the NXOB chunk
-            // magic. The bytes between are the chunk header (magic + size +
-            // header pointer + bone count + a few other fields we don't need
-            // for animation work).
-            int firstBoneOffset = nxobPos + 0x20;
+            // The first bone record is *normally* 0x20 bytes past the NXOB
+            // magic — the bytes between are the chunk header (magic + size +
+            // header pointer + bone count + fields we don't need). But the
+            // chunk header length varies between XNJ variants, so instead of
+            // trusting that, scan a small window after the chunk for the
+            // first offset that looks like a bone record.
+            //
+            // We only accept a candidate if the record *after* it also looks
+            // valid — a single lone match can be a false positive on
+            // arbitrary data, but two 0x90-aligned records in a row is a
+            // strong signal we found the real array. The one exception is a
+            // genuine single-bone skeleton, where there's no room for a
+            // second record; there we accept the lone match.
+            const int scanStart = 0x10;   // earliest plausible record offset
+            const int scanEnd = 0x80;     // latest plausible record offset
+            int firstBoneOffset = -1;
+
+            for (int probe = nxobPos + scanStart; probe <= nxobPos + scanEnd; probe++)
+            {
+                if (probe + BoneRecordSize > buf.Length)
+                    break;
+                if (!LooksLikeBoneRecord(buf, probe))
+                    continue;
+
+                int next = probe + BoneRecordSize;
+                bool nextOk = next + BoneRecordSize > buf.Length
+                              || LooksLikeBoneRecord(buf, next);
+                if (nextOk)
+                {
+                    firstBoneOffset = probe;
+                    break;
+                }
+            }
+
+            if (firstBoneOffset < 0)
+            {
+                ParseError = "No bone records recognized in NXOB chunk "
+                    + "(scanned 0x" + (nxobPos + scanStart).ToString("X")
+                    + "..0x" + (nxobPos + scanEnd).ToString("X") + ")";
+                return;
+            }
 
             // Walk the bone array. Each record is exactly 0x90 bytes and
             // starts with a recognizable type byte sequence. We stop when
@@ -139,7 +184,7 @@ namespace PSULib.FileClasses.Models
 
             if (Bones.Count == 0)
             {
-                ParseError = "No bone records recognized at expected offset 0x" + firstBoneOffset.ToString("X");
+                ParseError = "No bone records recognized at offset 0x" + firstBoneOffset.ToString("X");
             }
         }
 
@@ -151,6 +196,10 @@ namespace PSULib.FileClasses.Models
         /// the weapon attach points have 0x00), so we don't require a
         /// specific value there.
         /// </summary>
+        /// 
+
+        private byte[] reconstructedRaw;
+
         private static bool LooksLikeBoneRecord(byte[] buf, int pos)
         {
             if (pos + 4 > buf.Length) return false;
@@ -255,14 +304,16 @@ namespace PSULib.FileClasses.Models
             return -1;
         }
 
-        /// <summary>
-        /// XnjFile is parse-only for now; we don't support writing back to
-        /// the format. The standard PsuFile machinery still handles repacking
-        /// via the original byte buffer.
-        /// </summary>
         public override byte[] ToRaw()
         {
-            return null;
+            // XNJ is parse-only — we don't rewrite the format — so "to raw"
+            // returns the original file bytes unchanged. This round-trips
+            // losslessly (same bytes in, same bytes out) and gives the hex
+            // viewer something real to display. Falls back to the base
+            // PsuFile header if Parse never ran or the buffer wasn't built.
+            if (reconstructedRaw != null)
+                return reconstructedRaw;
+            return header;
         }
     }
 

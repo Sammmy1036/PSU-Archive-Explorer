@@ -142,6 +142,8 @@ namespace PSULib.FileClasses.General
                 return new SetFile(filename, rawData, inHeader, ptrs, baseAddr, bigEndian);
             else if (Regex.IsMatch(filename, "\\.[uxs]nt"))
                 return new XntFile(filename, rawData, inHeader, ptrs, baseAddr);
+            else if (Regex.IsMatch(filename, "\\.[uxs]nj"))
+                return new XnjFile(filename, rawData, inHeader, ptrs, baseAddr);
             else if (Regex.IsMatch(filename, "\\.[uxs]na"))
                 return new XnaFile(filename, rawData, inHeader, ptrs, baseAddr);
             else if (filename.EndsWith(".xncp"))

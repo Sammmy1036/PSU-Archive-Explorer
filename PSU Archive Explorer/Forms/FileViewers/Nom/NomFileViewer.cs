@@ -42,6 +42,8 @@ namespace psu_archive_explorer
 
         private BoneStats[] boneStats;
 
+        private NomAnimationPreview previewControl;
+
         public NomFileViewer(NomFile toImport)
         {
             InitializeComponent();
@@ -54,6 +56,90 @@ namespace psu_archive_explorer
 
             PopulateSummaryHeader();
             PopulateBoneTree();
+
+            InitializePreviewControl();
+        }
+        private TabControl rightTabControl;
+
+        private void InitializePreviewControl()
+        {
+            previewControl = new NomAnimationPreview();
+            previewControl.Dock = DockStyle.Fill;
+
+            rightTabControl = new TabControl { Dock = DockStyle.Fill };
+
+            // Data Tab
+            var dataTab = new TabPage("Data");
+            dataTab.Controls.Add(frameDataTextBox);
+            frameDataTextBox.Dock = DockStyle.Fill;
+
+            // Preview Tab
+            var previewTab = new TabPage("Preview");
+
+            var previewPanel = new Panel { Dock = DockStyle.Fill };
+
+            // Control Bar
+            var controlBar = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                Height = 45,
+                FlowDirection = FlowDirection.LeftToRight,
+                Padding = new Padding(8),
+                AutoSize = true
+            };
+
+            var btnPlayPause = new Button { Text = "▶ Play", Width = 90, Height = 30 };
+            var btnRestart = new Button { Text = "↺ Restart", Width = 90, Height = 30 };
+            var trackTime = new TrackBar
+            {
+                Width = 350,
+                Minimum = 0,
+                Maximum = 1000,
+                Value = 0
+            };
+            var lblTime = new Label
+            {
+                Text = "0.00 / 0.00 s",
+                Width = 140,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Height = 30
+            };
+
+            btnPlayPause.Click += (s, e) =>
+            {
+                previewControl.TogglePlayPause();
+                btnPlayPause.Text = previewControl.IsPlaying ? "❚❚ Pause" : "▶ Play";
+            };
+
+            btnRestart.Click += (s, e) => previewControl.Restart();
+
+            // Timeline scrubbing
+            trackTime.Scroll += (s, e) =>
+            {
+                if (previewControl != null && internalFile != null)
+                {
+                    float duration = internalFile.frameCount / internalFile.frameRate;
+                    previewControl.CurrentTime = (trackTime.Value / 1000f) * duration;
+                    previewControl.InvalidatePreview();
+                }
+            };
+
+            controlBar.Controls.Add(btnPlayPause);
+            controlBar.Controls.Add(btnRestart);
+            controlBar.Controls.Add(trackTime);
+            controlBar.Controls.Add(lblTime);
+
+            previewPanel.Controls.Add(previewControl);
+            previewPanel.Controls.Add(controlBar);
+            previewTab.Controls.Add(previewPanel);
+
+            rightTabControl.TabPages.Add(previewTab);
+            rightTabControl.TabPages.Add(dataTab);
+
+            splitContainer1.Panel2.Controls.Clear();
+            splitContainer1.Panel2.Controls.Add(rightTabControl);
+
+            previewControl.LoadAnimation(internalFile, VanillaPsuSkeleton.Create());
         }
 
         /// <summary>

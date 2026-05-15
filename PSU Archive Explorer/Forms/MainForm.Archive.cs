@@ -616,6 +616,10 @@ namespace psu_archive_explorer
             {
                 toAdd = new XntFileViewer(xntFile);
             }
+            else if (toRead is XnjFile xnjFile)
+            {
+                toAdd = new XnjFileViewer(xnjFile);
+            }
             else if (toRead is XnaFile xnaFile)
             {
                 toAdd = new XnaFileViewer(xnaFile);
