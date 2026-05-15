@@ -76,7 +76,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 
 **ADX & DAT Sound Previewer**
 - Decodes audio and provides preview of ADX and DAT Sound files prior to export.
-<img src="Images/ADX Multi Preview" width="800">
+<img src="Images/ADXMultiPreview.png" width="800">
 
 **Note**: To **replace** audio:
 - Convert your `.wav` to ADX using **ADX Converter & Player** (available on GameBanana: https://gamebanana.com/tools/6491).
@@ -86,7 +86,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 
 **SFD Previewer**
 - Decodes and provides preview of SFD video files prior to export.
-<img src="Images/SFD Preview" width="800">
+<img src="Images/SFD Preview.png" width="800">
 
 **NOM Animation Previewer**
 - Decodes and provides preview of NOM Animation files prior to export.
