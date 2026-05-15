@@ -168,9 +168,7 @@ namespace psu_archive_explorer
         /// </summary>
         private static bool IsHexUnviewableCore(PsuFile file)
         {
-            // Filename-based check first — cheap, and covers the common case
-            // of files inside an archive where the entry name has the right
-            // extension on it.
+            // Filename based check of files inside an archive
             string name = file.filename;
             if (!string.IsNullOrEmpty(name))
             {
@@ -178,12 +176,7 @@ namespace psu_archive_explorer
                 if (name.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase)) return true;
             }
 
-            // Content-based check second — for "fake archive" containers that
-            // hold a single hash-named file with no extension. We don't know
-            // from the filename, so peek at the bytes. ToRaw can be costly
-            // for very large files; in practice it's already cached/lazy on
-            // most PsuFile subclasses, and the result of this whole method
-            // is cached one level up, so we only pay this once per selection.
+            // Checks second for fake container that holds a single adx file
             byte[] bytes;
             try
             {
@@ -191,17 +184,17 @@ namespace psu_archive_explorer
             }
             catch
             {
-                return false; // can't sniff → fall back to "viewable"
+                return false; // can't sniff it falls back to "viewable"
             }
             if (bytes == null || bytes.Length < 4) return false;
 
-            // ADX magic: 0x80 0x00 at the start (the sync word). This is the
-            // canonical CRI ADX header marker used everywhere in the codebase's
+            // ADX magic: 0x80 0x00 at the start. This is the
+            // CRI ADX header marker used everywhere in the codebase's
             // existing ADX validation paths.
             if (bytes[0] == 0x80 && bytes[1] == 0x00) return true;
 
             // SFD magic: MPEG program stream pack header 0x00 0x00 0x01 0xBA.
-            // SFD is Sofdec, which is a CRI MPEG variant — same pack header.
+            // SFD is Sofdec, which is a CRI MPEG variant and the same pack header.
             if (bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0x01 && bytes[3] == 0xBA)
                 return true;
 

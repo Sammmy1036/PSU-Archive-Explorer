@@ -456,7 +456,7 @@ namespace psu_archive_explorer
                 MessageBox.Show(
                     "No archive is currently loaded.\r\n\r\n" +
                     "Weapon export reads itemWeaponParam_*.xnr files from the NMLL chunk " +
-                    "of an NBL archive. Open an NBL — or an AFS containing NBLs — first.",
+                    "of an NBL archive. Open an NBL or an AFS containing NBLs first.",
                     "Nothing to Export",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
@@ -697,7 +697,7 @@ namespace psu_archive_explorer
                     MessageBox.Show(
                         "The selected folder doesn't contain any subfolders.\r\n\r\n" +
                         "When an AFS (or similar multi-NBL container) is loaded, weapon import " +
-                        "expects one subfolder per target NBL — the same layout 'Export All " +
+                        "expects one subfolder per target NBL of the same layout 'Export All " +
                         "Weapons' produces. Each subfolder name should match an NBL entry name " +
                         "in the archive (e.g. 'ob_009_mm_0' for 'ob_009_mm_0.nbl').",
                         "No Subfolders Found",

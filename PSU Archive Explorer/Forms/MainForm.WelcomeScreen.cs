@@ -51,6 +51,31 @@ namespace psu_archive_explorer
         {
             if (welcomeVisible) return;
 
+            // Make sure the search box's placeholder state and click-to-clear
+            // behaviour are correctly set up by the time the welcome screen
+            // appears, regardless of whether WireSearchFocusDrop has already
+            // run in the constructor. Without this, clicking INTO the search
+            // box while the welcome screen is up wouldn't clear the
+            // placeholder — the same bug we fixed for the normal view, but
+            // re-introduced here by initialization order: the welcome screen
+            // can come up before the MouseDown handler has been wired.
+            //
+            // Unsubscribe first so we don't double-wire if both this and
+            // WireSearchFocusDrop end up running (delegate equality matches
+            // method references, so the -= cleanly removes a prior +=, and a
+            // -= against a handler that was never added is a harmless no-op).
+            if (string.Equals(searchBox.Text, SearchPlaceholder,
+                              System.StringComparison.OrdinalIgnoreCase))
+            {
+                searchBox.Text = SearchPlaceholder;
+                searchBox.ForeColor = System.Drawing.Color.Gray;
+                searchBoxHasRealText = false;
+            }
+            searchBox.MouseDown -= searchBox_MouseDown;
+            searchBox.MouseDown += searchBox_MouseDown;
+            searchBox.MouseUp -= searchBox_MouseUp;
+            searchBox.MouseUp += searchBox_MouseUp;
+
             // ---- LEFT: logo occupies the empty tree region ----
             // The tree is empty at launch, so we hide it to let the logo show through.
             // searchResults is already hidden by default and will be shown by RunSearch

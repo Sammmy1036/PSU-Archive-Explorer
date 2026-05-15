@@ -39,7 +39,6 @@
         private void InitializeComponent()
         {
             this.summaryPanel = new System.Windows.Forms.Panel();
-            this.exportGlbButton = new System.Windows.Forms.Button();
             this.summaryLabel = new System.Windows.Forms.Label();
             this.fileNameLabel = new System.Windows.Forms.Label();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
@@ -54,13 +53,13 @@
             //
             // summaryPanel
             //
-            // The three children use absolute positioning (with anchors) rather
-            // than docking. Docking the labels would fight the button's anchor
-            // or require nesting yet another sub-panel; absolute + anchor keeps
-            // the structure flat and the layout predictable on resize.
+            // The two labels use absolute positioning (with anchors) rather
+            // than docking. The Export button used to live up here too, but it
+            // has been moved down into the preview control bar (next to Play /
+            // Restart) so all the action controls are in one place. With the
+            // button gone the labels now span the full panel width.
             this.summaryPanel.BackColor = System.Drawing.SystemColors.Info;
             this.summaryPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.summaryPanel.Controls.Add(this.exportGlbButton);
             this.summaryPanel.Controls.Add(this.fileNameLabel);
             this.summaryPanel.Controls.Add(this.summaryLabel);
             this.summaryPanel.Dock = System.Windows.Forms.DockStyle.Top;
@@ -69,34 +68,17 @@
             this.summaryPanel.Size = new System.Drawing.Size(422, 60);
             this.summaryPanel.TabIndex = 0;
             //
-            // exportGlbButton
-            //
-            // Anchored Top|Right so it stays at the right edge when the viewer
-            // is resized. Width and font set to roughly match the parent
-            // form's "View Current File in Hex" button so the two read as a
-            // visual pair.
-            this.exportGlbButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.exportGlbButton.BackColor = System.Drawing.SystemColors.Control;
-            this.exportGlbButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
-            this.exportGlbButton.Location = new System.Drawing.Point(265, 16);
-            this.exportGlbButton.Name = "exportGlbButton";
-            this.exportGlbButton.Size = new System.Drawing.Size(151, 28);
-            this.exportGlbButton.TabIndex = 0;
-            this.exportGlbButton.Text = "Export Animation to GLB";
-            this.exportGlbButton.UseVisualStyleBackColor = false;
-            this.exportGlbButton.Click += new System.EventHandler(this.exportGlbButton_Click);
-            //
             // fileNameLabel
             //
-            // Top|Left|Right anchor so the filename grows with the panel but
-            // stops short of the button on the right side.
+            // Top|Left|Right anchor so the filename grows with the panel. Now
+            // that the Export button is gone it can use the full width.
             this.fileNameLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
                         | System.Windows.Forms.AnchorStyles.Right)));
             this.fileNameLabel.AutoEllipsis = true;
             this.fileNameLabel.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
             this.fileNameLabel.Location = new System.Drawing.Point(8, 8);
             this.fileNameLabel.Name = "fileNameLabel";
-            this.fileNameLabel.Size = new System.Drawing.Size(251, 18);
+            this.fileNameLabel.Size = new System.Drawing.Size(408, 18);
             this.fileNameLabel.TabIndex = 1;
             this.fileNameLabel.Text = "(filename)";
             this.fileNameLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -110,7 +92,7 @@
             this.summaryLabel.ForeColor = System.Drawing.SystemColors.ControlDarkDark;
             this.summaryLabel.Location = new System.Drawing.Point(8, 30);
             this.summaryLabel.Name = "summaryLabel";
-            this.summaryLabel.Size = new System.Drawing.Size(251, 20);
+            this.summaryLabel.Size = new System.Drawing.Size(408, 20);
             this.summaryLabel.TabIndex = 2;
             this.summaryLabel.Text = "(summary)";
             this.summaryLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -178,7 +160,6 @@
         #endregion
 
         private System.Windows.Forms.Panel summaryPanel;
-        private System.Windows.Forms.Button exportGlbButton;
         private System.Windows.Forms.Label fileNameLabel;
         private System.Windows.Forms.Label summaryLabel;
         private System.Windows.Forms.SplitContainer splitContainer1;

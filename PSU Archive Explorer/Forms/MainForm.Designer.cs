@@ -579,6 +579,12 @@
             // 
             // viewInHexButton
             // 
+            // Anchored Top|Right so the button stays pinned to the right edge
+            // of the form as the window is resized. Without this it defaults
+            // to Top|Left, which locks it to a fixed X coordinate (718, the
+            // designer position) and leaves a growing gap on the right when
+            // the form is wider than the designer's 858 px ClientSize.
+            this.viewInHexButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.viewInHexButton.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
             this.viewInHexButton.Location = new System.Drawing.Point(718, 52);
             this.viewInHexButton.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);

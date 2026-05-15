@@ -100,6 +100,32 @@ namespace psu_archive_explorer
             }
         }
 
+        // Clicking into the search box is an unambiguous user signal to start
+        // searching, so clear the placeholder right away rather than waiting
+        // for the first keystroke. (searchBox_Enter deliberately does NOT
+        // clear it — see the comment there — because Enter also fires on
+        // incidental focus changes like Alt+Tab back into the app, focus
+        // being restored after a cancelled dialog, default tab order on
+        // launch, etc., and clearing on those would wipe the hint before the
+        // user has decided to search. A real mouse click is different: it's
+        // always the user actively pointing at the box.)
+        //
+        // Left-button only, to match how every other Windows textbox treats
+        // "click to interact": a right-click should open a context menu, not
+        // erase the hint.
+        private void searchBox_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && ShowingPlaceholder())
+            {
+                searchBox.Text = "";
+                searchBox.ForeColor = System.Drawing.SystemColors.WindowText;
+                // searchBoxHasRealText is updated by searchBox_TextChanged
+                // when the user actually types something; clearing to ""
+                // here intentionally leaves it false so searchBox_Leave can
+                // restore the placeholder if they click away without typing.
+            }
+        }
+
         private void searchBox_Leave(object sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(searchBox.Text))
@@ -425,6 +451,13 @@ namespace psu_archive_explorer
             // is needed in addition to the Application.Idle hook in
             // searchBox_Enter.
             searchBox.MouseUp += searchBox_MouseUp;
+
+            // Clear the placeholder on a real mouse click — see
+            // searchBox_MouseDown for why this is wired here rather than in
+            // searchBox_Enter (focus events fire on incidental focus changes
+            // like Alt+Tab and cancelled dialogs, which shouldn't wipe the
+            // hint; an actual click should).
+            searchBox.MouseDown += searchBox_MouseDown;
 
             // The tree view itself doesn't need this it already takes focus on
             // click. Same with searchResults, the buttons, etc.

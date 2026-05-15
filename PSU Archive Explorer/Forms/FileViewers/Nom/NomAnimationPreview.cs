@@ -77,9 +77,44 @@ namespace psu_archive_explorer
         private readonly List<Matrix4x4> worldMatrices = new List<Matrix4x4>();
 
         // ---- projection ----
-        /// <summary>Which 2D projection of the 3D skeleton to draw.</summary>
-        private enum ViewMode { Front, Side }
+        /// <summary>
+        /// Which 2D projection of the 3D skeleton to draw. The preview is a
+        /// flat orthographic projection (no free camera), so each mode just
+        /// picks which two world axes map to screen X and screen Y — see
+        /// Flatten() for the per-mode mapping.
+        ///   Front  — looking along +Z: see the character's front
+        ///   Back   — looking along -Z: see the character's back
+        ///   Side1  — looking along the character's left/right (one side)
+        ///   Side2  — the opposite side
+        ///   Top    — looking straight down: see the character from above
+        ///   Bottom — looking straight up: see the character from below
+        /// </summary>
+        private enum ViewMode { Front, Back, Side1, Side2, Top, Bottom }
         private ViewMode viewMode = ViewMode.Front;
+
+        /// <summary>
+        /// The view cycle order and their button labels, kept together so the
+        /// toggle handler stays a simple "advance to next" with no switch.
+        /// </summary>
+        private static readonly ViewMode[] viewCycle =
+        {
+            ViewMode.Front, ViewMode.Back, ViewMode.Side1,
+            ViewMode.Side2, ViewMode.Top, ViewMode.Bottom
+        };
+
+        private static string ViewModeLabel(ViewMode m)
+        {
+            switch (m)
+            {
+                case ViewMode.Front: return "Front";
+                case ViewMode.Back: return "Back";
+                case ViewMode.Side1: return "Side 1";
+                case ViewMode.Side2: return "Side 2";
+                case ViewMode.Top: return "Top";
+                case ViewMode.Bottom: return "Bottom";
+                default: return m.ToString();
+            }
+        }
 
         public NomAnimationPreview()
         {
@@ -101,12 +136,13 @@ namespace psu_archive_explorer
             this.renderPanel.Paint += RenderPanel_Paint;
             this.renderPanel.Resize += (s, e) => this.renderPanel.Invalidate();
 
-            // Small overlay button to flip between front and side views.
-            // Parented to the render panel so it floats over the drawing.
+            // Small overlay button to cycle through the six fixed views
+            // (Front, Back, Side 1, Side 2, Top, Bottom). Parented to the
+            // render panel so it floats over the drawing.
             this.viewToggleButton = new Button
             {
                 Text = "View: Front",
-                Width = 96,
+                Width = 110,
                 Height = 26,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(45, 45, 60),
@@ -147,6 +183,53 @@ namespace psu_archive_explorer
                 // even while playback is paused.
                 UpdateBoneTransforms();
                 renderPanel?.Invalidate();
+                RaiseTimeChanged();
+            }
+        }
+
+        /// <summary>
+        /// Total length of the loaded animation in seconds, or 0 if nothing is
+        /// loaded (or the NOM has a zero frame rate). Exposed so the host can
+        /// position its timeline slider and time readout without having to
+        /// reach into the NomFile itself.
+        /// </summary>
+        public float Duration
+        {
+            get
+            {
+                if (nom == null || nom.frameRate <= 0f) return 0f;
+                return nom.frameCount / nom.frameRate;
+            }
+        }
+
+        /// <summary>
+        /// Raised whenever currentTime changes — on every playback tick, on a
+        /// timeline scrub, and on Restart / Reset / load. The host viewer
+        /// subscribes to this to keep its time label and timeline slider in
+        /// sync with the animation; without it those controls would just sit
+        /// at 0:00 because nothing else tells them playback advanced.
+        /// </summary>
+        public event EventHandler TimeChanged;
+
+        private void RaiseTimeChanged()
+        {
+            TimeChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Playback speed multiplier. Timer_Tick scales its per-tick delta by
+        /// this, so 2.0 plays twice as fast, 0.5 half speed, etc. Clamped to a
+        /// sane positive range — a zero or negative multiplier would freeze or
+        /// reverse playback in ways the UI doesn't expect. Default 1.0.
+        /// </summary>
+        public float PlaybackSpeed
+        {
+            get { return playbackSpeed; }
+            set
+            {
+                if (value < 0.05f) value = 0.05f;
+                if (value > 8.0f) value = 8.0f;
+                playbackSpeed = value;
             }
         }
 
@@ -195,12 +278,14 @@ namespace psu_archive_explorer
             lastFrameTime = DateTime.Now;
             UpdateBoneTransforms();
             renderPanel?.Invalidate();
+            RaiseTimeChanged();   // snap the host's label / slider back to 0
         }
 
         public void ResetAnimation()
         {
             currentTime = 0;
             lastFrameTime = DateTime.Now;
+            RaiseTimeChanged();
         }
 
         // ====================== SKELETON SETUP ======================
@@ -323,6 +408,7 @@ namespace psu_archive_explorer
 
             UpdateBoneTransforms();
             renderPanel?.Invalidate();
+            RaiseTimeChanged();   // keep the host's time label / slider in sync
         }
 
         /// <summary>
@@ -530,8 +616,11 @@ namespace psu_archive_explorer
 
         private void ViewToggleButton_Click(object sender, EventArgs e)
         {
-            viewMode = viewMode == ViewMode.Front ? ViewMode.Side : ViewMode.Front;
-            viewToggleButton.Text = viewMode == ViewMode.Front ? "View: Front" : "View: Side";
+            // Advance to the next view in the cycle, wrapping at the end.
+            int idx = Array.IndexOf(viewCycle, viewMode);
+            idx = (idx + 1) % viewCycle.Length;
+            viewMode = viewCycle[idx];
+            viewToggleButton.Text = "View: " + ViewModeLabel(viewMode);
             renderPanel.Invalidate();
         }
 
@@ -548,28 +637,56 @@ namespace psu_archive_explorer
         }
 
         /// <summary>
-        /// Flattens a 3D world position to the chosen 2D plane.
-        ///   Front view: X horizontal, Y vertical.
-        ///   Side view:  Z horizontal, Y vertical.
-        /// </summary>
-        /// <summary>
-        /// Flattens a 3D world position to the chosen 2D plane.
-        ///   Front view: -X horizontal, Y vertical.
-        ///   Side view:   Z horizontal, Y vertical.
+        /// Flattens a 3D world position to the chosen 2D plane. The preview is
+        /// a fixed orthographic projection — each mode just selects which two
+        /// world axes become screen X and screen Y. The caller (RenderPanel_Paint)
+        /// then auto-fits whatever box these points span, and inverts screen Y
+        /// so larger values draw higher up.
         ///
-        /// Front view negates X on purpose. PSU's world X runs the opposite
-        /// way from GDI+'s screen X for how the character is oriented, so a
-        /// straight worldPos.X mapping shows the BACK of the character with
-        /// left/right mirrored. Negating X flips it horizontally to show the
-        /// front — same up/down and same bone structure, just the correct
-        /// handedness.
+        /// World axes (PSU convention): X = left/right, Y = up, Z = depth.
+        ///
+        ///   Front  (-X,  Y) — looking along +Z at the character's front.
+        ///                     X is negated: PSU's world X runs opposite to
+        ///                     GDI+ screen X for how the character faces, so a
+        ///                     straight X mapping shows the BACK mirrored.
+        ///                     Negating flips it to a correct front view.
+        ///   Back   ( X,  Y) — the opposite look; un-negated X is literally
+        ///                     the back, with correct (un-mirrored) handedness.
+        ///   Side 1 ( Z,  Y) — looking along the X axis from one side.
+        ///   Side 2 (-Z,  Y) — looking from the opposite side (Z negated so
+        ///                     it's a true mirror of Side 1, not the same image).
+        ///   Top    (-X, -Z) — looking straight down the Y axis. Horizontal
+        ///                     stays -X to agree with the Front view; the
+        ///                     vertical screen axis is depth (Z). -Z is chosen
+        ///                     so the character's front points "down" on screen,
+        ///                     i.e. toward the viewer as you look down.
+        ///   Bottom (-X,  Z) — looking straight up the Y axis; the vertical
+        ///                     axis is flipped relative to Top so it reads as a
+        ///                     true mirror.
+        ///
+        /// Note these return values feed an auto-fit + Y-invert step in
+        /// RenderPanel_Paint, so "Y" here means "the axis that should point up
+        /// on screen" — that's why Top/Bottom put a Z term in the second slot.
         /// </summary>
         private PointF Flatten(Vector3 worldPos)
         {
-            if (viewMode == ViewMode.Front)
-                return new PointF(-worldPos.X, worldPos.Y);
-            else
-                return new PointF(worldPos.Z, worldPos.Y);
+            switch (viewMode)
+            {
+                case ViewMode.Front:
+                    return new PointF(-worldPos.X, worldPos.Y);
+                case ViewMode.Back:
+                    return new PointF(worldPos.X, worldPos.Y);
+                case ViewMode.Side1:
+                    return new PointF(worldPos.Z, worldPos.Y);
+                case ViewMode.Side2:
+                    return new PointF(-worldPos.Z, worldPos.Y);
+                case ViewMode.Top:
+                    return new PointF(-worldPos.X, -worldPos.Z);
+                case ViewMode.Bottom:
+                    return new PointF(-worldPos.X, worldPos.Z);
+                default:
+                    return new PointF(-worldPos.X, worldPos.Y);
+            }
         }
 
         /// <summary>

@@ -42,6 +42,24 @@ namespace psu_archive_explorer
 
         private BoneStats[] boneStats;
 
+        /// <summary>
+        /// One entry in the playback-speed dropdown. Pairs the display label
+        /// with the actual multiplier so the SelectedIndexChanged handler can
+        /// read the number directly instead of parsing "1.5x" back into 1.5f.
+        /// ToString() is what the ComboBox renders.
+        /// </summary>
+        private sealed class SpeedOption
+        {
+            public readonly string Label;
+            public readonly float Multiplier;
+            public SpeedOption(string label, float multiplier)
+            {
+                Label = label;
+                Multiplier = multiplier;
+            }
+            public override string ToString() { return Label; }
+        }
+
         private NomAnimationPreview previewControl;
 
         public NomFileViewer(NomFile toImport)
@@ -58,6 +76,33 @@ namespace psu_archive_explorer
             PopulateBoneTree();
 
             InitializePreviewControl();
+
+            // The tree is auto-sized once at construction (inside
+            // PopulateBoneTree), but at that point the control often hasn't
+            // been given its real size yet, so the clamp uses the designer
+            // width. Re-run it the first time we get laid out at the actual
+            // size so the splitter ends up correct. One-shot — after that the
+            // user is free to drag the splitter wherever they like.
+            this.Layout += NomFileViewer_FirstLayout;
+
+            // Expanding a bone reveals its channel children, and a child label
+            // ("Rotation Frames" etc.) can be wider than any collapsed bone
+            // row. Re-measure on expand so the tree grows to fit them.
+            treeView1.AfterExpand += (s, e) => AutoSizeTreePanel();
+        }
+
+        // Set true once the first real layout pass has auto-sized the tree, so
+        // we stop reacting to Layout events and leave the splitter under user
+        // control from then on.
+        private bool treeAutoSized;
+
+        private void NomFileViewer_FirstLayout(object sender, LayoutEventArgs e)
+        {
+            if (treeAutoSized) return;
+            if (this.Width <= 0) return; // still not really sized — wait
+            treeAutoSized = true;
+            this.Layout -= NomFileViewer_FirstLayout;
+            AutoSizeTreePanel();
         }
         private TabControl rightTabControl;
 
@@ -79,13 +124,22 @@ namespace psu_archive_explorer
             var previewPanel = new Panel { Dock = DockStyle.Fill };
 
             // Control Bar
+            //
+            // FlowLayoutPanel so the transport controls, speed selector and
+            // Export button flow left-to-right and wrap onto a second row when
+            // the preview pane is narrow. AutoSize + GrowAndShrink lets the bar
+            // grow tall enough to show a wrapped second row instead of clipping
+            // it — important now that the Export button has been moved in here
+            // and the bar can hold more than one row's worth of controls.
             var controlBar = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 45,
                 FlowDirection = FlowDirection.LeftToRight,
                 Padding = new Padding(8),
-                AutoSize = true
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = true,
+                MinimumSize = new Size(0, 45)
             };
 
             var btnPlayPause = new Button { Text = "▶ Play", Width = 90, Height = 30 };
@@ -97,13 +151,71 @@ namespace psu_archive_explorer
                 Maximum = 1000,
                 Value = 0
             };
+            // Fixed width — wide enough for the readout at typical durations
+            // ("0.00 / 3.00 s" up to a 3-digit "120.00 / 360.00 s"). Not
+            // AutoSize: the text width changes every frame during playback,
+            // and an auto-sizing label would jitter. This label is docked Left
+            // inside bottomRow (see below); the width here is just how much of
+            // that left edge it occupies.
             var lblTime = new Label
             {
                 Text = "0.00 / 0.00 s",
-                Width = 140,
+                Width = 100,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Height = 30
             };
+
+            // Playback speed selector. The preview control already multiplies
+            // its per-tick delta by a playbackSpeed field — this just gives
+            // the user a way to set it. DropDownList style so the value is
+            // always one of the known-good multipliers (no free-text parsing).
+            // Positioning is handled further down: lblSpeed + cmbSpeed get put
+            // into a right-docked sub-panel so they sit at the right edge of
+            // the control bar rather than flowing left-to-right after lblTime.
+            var lblSpeed = new Label
+            {
+                Text = "Speed:",
+                Width = 48,
+                TextAlign = ContentAlignment.MiddleRight,
+                Height = 30
+            };
+            var cmbSpeed = new ComboBox
+            {
+                Width = 70,
+                Height = 30,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            // Tag carries the actual multiplier so we don't have to parse the
+            // display string back into a number.
+            cmbSpeed.Items.Add(new SpeedOption("0.25x", 0.25f));
+            cmbSpeed.Items.Add(new SpeedOption("0.5x", 0.5f));
+            cmbSpeed.Items.Add(new SpeedOption("1x", 1.0f));
+            cmbSpeed.Items.Add(new SpeedOption("1.5x", 1.5f));
+            cmbSpeed.Items.Add(new SpeedOption("2x", 2.0f));
+            cmbSpeed.SelectedIndex = 2; // default 1x
+
+            cmbSpeed.SelectedIndexChanged += (s, e) =>
+            {
+                if (previewControl != null && cmbSpeed.SelectedItem is SpeedOption)
+                {
+                    var opt = (SpeedOption)cmbSpeed.SelectedItem;
+                    previewControl.PlaybackSpeed = opt.Multiplier;
+                }
+            };
+
+            // Export button — moved here from the yellow summary header so it
+            // sits with the other action controls. It used to be a Designer
+            // control (exportGlbButton); it's now created here instead. Placed
+            // directly to the right of Restart in the flow order below, with a
+            // normal button margin so it lines up with the transport buttons.
+            var btnExport = new Button
+            {
+                Text = "Export Animation to GLB",
+                Width = 170,
+                Height = 30,
+                Margin = new Padding(3, 3, 3, 3)
+            };
+            btnExport.Click += exportGlbButton_Click;
 
             btnPlayPause.Click += (s, e) =>
             {
@@ -113,24 +225,106 @@ namespace psu_archive_explorer
 
             btnRestart.Click += (s, e) => previewControl.Restart();
 
-            // Timeline scrubbing
+            // Timeline scrubbing. User drags the slider -> set the preview's
+            // CurrentTime. Guard the frame-rate divide via the preview's
+            // Duration property (it returns 0 for a 0 fps file rather than
+            // dividing by zero).
             trackTime.Scroll += (s, e) =>
             {
-                if (previewControl != null && internalFile != null)
+                if (previewControl != null)
                 {
-                    float duration = internalFile.frameCount / internalFile.frameRate;
+                    float duration = previewControl.Duration;
                     previewControl.CurrentTime = (trackTime.Value / 1000f) * duration;
                     previewControl.InvalidatePreview();
                 }
             };
 
+            // Keep the time label and slider in sync with playback. The
+            // preview control raises TimeChanged on every tick, scrub, restart
+            // and load; without this handler the label would sit at
+            // "0.00 / 0.00 s" and the slider thumb would never move, because
+            // nothing else updates them as the animation runs.
+            //
+            // Setting trackTime.Value here does NOT re-enter the scrub handler
+            // above: TrackBar.Scroll fires only on real user input, not on
+            // programmatic Value assignment, so there's no feedback loop to
+            // guard against.
+            previewControl.TimeChanged += (s, e) =>
+            {
+                if (previewControl == null) return;
+
+                float cur = previewControl.CurrentTime;
+                float dur = previewControl.Duration;
+
+                lblTime.Text = string.Format("{0:0.00} / {1:0.00} s", cur, dur);
+
+                int v = 0;
+                if (dur > 0f)
+                    v = (int)Math.Round((cur / dur) * trackTime.Maximum);
+                // Clamp into the trackbar's range — floating-point error and
+                // the playback loop's modulo wrap can both land a hair outside.
+                if (v < trackTime.Minimum) v = trackTime.Minimum;
+                if (v > trackTime.Maximum) v = trackTime.Maximum;
+                trackTime.Value = v;
+            };
+
+            // Layout of the preview tab, top to bottom:
+            //   controlBar  (Dock=Top)  — Play / Restart / Export / trackbar,
+            //                             flowing + wrapping as before.
+            //   bottomRow   (Dock=Top)  — time readout (left) + speed (right).
+            //   previewControl (Fill)   — the skeleton drawing.
+            //
+            // bottomRow is its OWN Dock=Top panel rather than another item
+            // inside the FlowLayoutPanel, for two reasons:
+            //   1) A FlowLayoutPanel only packs left-to-right — it can't push
+            //      the speed control to the right edge. A plain Panel can:
+            //      dock the time label Left, dock the speed group Right.
+            //   2) Because bottomRow is Dock=Top, docking gives it the full
+            //      pane width automatically — no manual width tracking, and
+            //      nothing to get wrong during the initial layout pass.
+            var bottomRow = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 38
+            };
+
+            // Time readout docks to the left edge of the row.
+            lblTime.Dock = DockStyle.Left;
+            lblTime.TextAlign = ContentAlignment.MiddleLeft;
+
+            // Speed label + dropdown live together in a right-docked
+            // FlowLayoutPanel so they travel as a unit and hug the right edge
+            // of the pane — roughly under the Export button above — and stay
+            // there when the window is resized. The right padding keeps them a
+            // few px clear of the very edge.
+            var speedGroup = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(0, 4, 8, 4)
+            };
+            lblSpeed.Margin = new Padding(0, 3, 0, 3); // snug inside the speed group
+            speedGroup.Controls.Add(lblSpeed);
+            speedGroup.Controls.Add(cmbSpeed);
+
+            bottomRow.Controls.Add(lblTime);
+            bottomRow.Controls.Add(speedGroup);
+
+            // Add order matters for Dock=Top stacking: the LAST control added
+            // ends up on top (closest to the pane's top edge). We want, top to
+            // bottom: controlBar, then bottomRow, then the Fill preview. So add
+            // the Fill control first, then bottomRow, then controlBar last.
             controlBar.Controls.Add(btnPlayPause);
             controlBar.Controls.Add(btnRestart);
+            controlBar.Controls.Add(btnExport);
             controlBar.Controls.Add(trackTime);
-            controlBar.Controls.Add(lblTime);
 
-            previewPanel.Controls.Add(previewControl);
-            previewPanel.Controls.Add(controlBar);
+            previewPanel.Controls.Add(previewControl); // Fill — added first
+            previewPanel.Controls.Add(bottomRow);      // Dock=Top, below controlBar
+            previewPanel.Controls.Add(controlBar);     // Dock=Top, on top
             previewTab.Controls.Add(previewPanel);
 
             rightTabControl.TabPages.Add(previewTab);
@@ -140,6 +334,39 @@ namespace psu_archive_explorer
             splitContainer1.Panel2.Controls.Add(rightTabControl);
 
             previewControl.LoadAnimation(internalFile, VanillaPsuSkeleton.Create());
+
+            // Nothing is selected in the tree yet, so the Data tab would
+            // otherwise be an empty white box. Show a hint explaining how to
+            // populate it instead.
+            ShowDataTabPlaceholder();
+        }
+
+        /// <summary>
+        /// Placeholder shown in the Data tab when no tree node is selected.
+        /// Without this the tab is just a blank box on load (and again every
+        /// time the selection is cleared), which reads as "broken" rather than
+        /// "waiting for input". Explains both what to click and what each kind
+        /// of node shows.
+        /// </summary>
+        private void ShowDataTabPlaceholder()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("No bone selected.");
+            sb.AppendLine();
+            sb.AppendLine("Select a bone in the tree on the left to view its");
+            sb.AppendLine("properties here:");
+            sb.AppendLine();
+            sb.AppendLine("  \u2022  Click a bone name for a per-bone summary");
+            sb.AppendLine("     (key counts per channel and animated frame range).");
+            sb.AppendLine();
+            sb.AppendLine("  \u2022  Expand a bone and click one of its channels");
+            sb.AppendLine("     (Rotation / X / Y / Z Position Frames) for the");
+            sb.AppendLine("     full keyframe data dump.");
+            sb.AppendLine();
+            sb.AppendLine("Tip: bones marked \u25CF are animated; bones marked");
+            sb.AppendLine("\u25CB (greyed out) have no animation data.");
+
+            frameDataTextBox.Text = sb.ToString();
         }
 
         /// <summary>
@@ -269,6 +496,85 @@ namespace psu_archive_explorer
                 treeView1.Nodes.Add(node);
             }
             treeView1.EndUpdate();
+
+            AutoSizeTreePanel();
+        }
+
+        /// <summary>
+        /// Sizes the splitter so the tree panel is exactly wide enough to show
+        /// the longest node label without horizontal scrolling, leaving the
+        /// rest of the width for the frame-data / preview panel on the right.
+        ///
+        /// A SplitContainer doesn't do this on its own — it just keeps a fixed
+        /// SplitterDistance. So we measure every node's rendered text width
+        /// (top-level bone nodes AND their channel children, since an expanded
+        /// child like "Rotation Frames" can be the widest thing on screen),
+        /// add the per-node chrome — indent, expand glyph, a little padding —
+        /// and set SplitterDistance to the widest result.
+        ///
+        /// The result is clamped: never narrower than a usable minimum, and
+        /// never so wide it leaves the right panel too small. If the control
+        /// hasn't been sized yet (Width == 0 during construction) the clamp
+        /// uses the designer width as a fallback.
+        /// </summary>
+        private void AutoSizeTreePanel()
+        {
+            if (treeView1.Nodes.Count == 0) return;
+
+            // Per-level horizontal cost: WinForms indents child nodes, and each
+            // node also reserves space for the expand [+]/[-] glyph. Indent is
+            // the TreeView's own Indent value; the glyph is roughly 20 px.
+            int indent = treeView1.Indent;
+            const int glyphAndPadding = 28; // expand glyph + left/right breathing room
+
+            int widest = 0;
+            foreach (TreeNode bone in treeView1.Nodes)
+            {
+                // Top-level bone node (depth 0).
+                int boneWidth = TextRenderer.MeasureText(bone.Text, treeView1.Font).Width
+                                + glyphAndPadding;
+                if (boneWidth > widest) widest = boneWidth;
+
+                // Channel children (depth 1) — measured with one extra indent.
+                foreach (TreeNode child in bone.Nodes)
+                {
+                    int childWidth = TextRenderer.MeasureText(child.Text, treeView1.Font).Width
+                                     + glyphAndPadding + indent;
+                    if (childWidth > widest) widest = childWidth;
+                }
+            }
+
+            // Clamp. Use the live control width when available, otherwise the
+            // designer size, so construction-time calls still get a sane cap.
+            int available = splitContainer1.Width > 0
+                ? splitContainer1.Width
+                : this.Width;
+
+            const int minTreeWidth = 120;
+            // Leave at least this much for the right-hand (preview / data)
+            // panel. Sized so the preview tab's control bar can fit its three
+            // action buttons — Play (~90) + Restart (~90) + Export (~170),
+            // plus button margins and the bar's own padding — on a single row
+            // at the normal window size, instead of wrapping Export below.
+            // If the bone names are long enough that auto-fit WOULD push past
+            // this, the tree is capped here and the names scroll instead.
+            const int minRightWidth = 400;
+            int maxTreeWidth = Math.Max(minTreeWidth, available - minRightWidth);
+
+            int target = Math.Max(minTreeWidth, Math.Min(widest, maxTreeWidth));
+
+            // SplitterDistance throws if it's out of range for the current
+            // size; guard so a freshly-constructed (still tiny) control can't
+            // crash here.
+            try
+            {
+                splitContainer1.SplitterDistance = target;
+            }
+            catch (InvalidOperationException)
+            {
+                // Control not laid out yet — the Resize handler below will
+                // retry once it has a real size.
+            }
         }
 
         /// <summary>
@@ -280,7 +586,11 @@ namespace psu_archive_explorer
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
             frameDataTextBox.Clear();
-            if (e.Node == null) return;
+            if (e.Node == null)
+            {
+                ShowDataTabPlaceholder();
+                return;
+            }
 
             // Case 1: channel sub-node. Its parent is a bone node carrying
             // the bone index as its Tag.
@@ -305,6 +615,10 @@ namespace psu_archive_explorer
                 ShowBoneSummary((int)e.Node.Tag);
                 return;
             }
+
+            // Case 3: anything else (shouldn't normally happen) — fall back to
+            // the placeholder rather than leaving the box blank.
+            ShowDataTabPlaceholder();
         }
 
         /// <summary>
