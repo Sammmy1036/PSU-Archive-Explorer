@@ -4,7 +4,6 @@
 
 <p align="center">
   <strong>PSU Archive Explorer</strong> for <em>Phantasy Star Universe</em>.<br>
-  <em>(Forked from Tenora Works PSU Generic Parser)</em>
 </p>
 
 <p align="center">
