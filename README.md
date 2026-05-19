@@ -10,9 +10,7 @@
   <strong><a href="https://github.com/Sammmy1036/PSU-Archive-Explorer/releases" style="font-size: 1.3em;">⬇️ Download Latest Release</a></strong>
 </p>
 
-## PSU Archive Explorer is a tool for browsing, extracting, and editing files from Phantasy Star Universe (PSU) game archives. It supports NBL, AFS, MiniAFS, ADX, BIN, DAT, REL, K, NOM, SFD, PSO, VSO, XNA, XNCP, XNCF, XNJ, XNM, XNR, XNT, and XVR file formats, with built-in preview for audio, video, and animation files, and export to WAV and GLB formats. 
-
-Forked from Tenora Works PSU Generic Parser.
+## PSU Archive Explorer is a tool for browsing, extracting, and editing files from Phantasy Star Universe (PSU) game archives. It supports NBL, AFS, MiniAFS, ADX, BIN, DAT, REL, K, NOM, SFD, PSO, VSO, XNA, XNCP, XNCF, XNJ, XNM, XNR, XNT, and XVR file formats, with built-in preview for audio, video, and animation files. 
 
 ## Whats Changed
 
