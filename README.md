@@ -45,6 +45,10 @@ Updates
 - Updated C# language to 7.3
 - Updated PSULib to now support multiple new file formats
 
+Upcoming Features
+- GLB importer allowing custom GLB's to be converted to NOM and usable in game
+<img src="Images/AnimationImporter.png" width="800">
+
 ## How to Use the PSU Archive Explorer
 
 Phantasy Star Universe stores most game data inside the **DATA** folder.  
