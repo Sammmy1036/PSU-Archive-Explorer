@@ -1,3 +1,4 @@
+<meta name="google-site-verification" content="1bQ0mwlXeXpRZsvf1NKgJJHO0K2ZBX-5yPBybHt-O1g" />
 <p align="center">
   <img src="https://i.imgur.com/XTsGk54.png" width="250" alt="PSU Archive Explorer">
 </p>
