@@ -46,6 +46,7 @@ Updates
 - Updated PSULib to now support multiple new file formats
 
 Upcoming Features
+- SFD exporting to friendlier formats (MP4/MKV)
 - WAV to ADX Encoding
 - GLB importer allowing custom GLB's to be converted to NOM and usable in game
 <img src="Images/AnimationImporter.png" width="800">
