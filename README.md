@@ -76,6 +76,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **XNCP**  | UI layout and control files (HUD, menus, interfaces) |
 | **XNCF**  | Bitmap font tables that map characters to subimages in a paired XNCP atlas (HUD, menus, interfaces) |
 | **XNF**   | Sega Ninja Next framework skeletal animation or morph motion files |
+| **XNG**   | Sega Ninja Next framework cage model files |
 | **XNJ**   | 3D model files, Actual Bones/Skeleton |
 | **XNM**   | Model material and mesh data (usually paired with XNJ) |
 | **XNR**   | Parameter/data table files (UI/HUD Scaling, item stats, weapons, enemy drops, skills, technics, AI, etc.) |
