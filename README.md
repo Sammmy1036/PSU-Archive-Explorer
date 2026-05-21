@@ -69,12 +69,13 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **REL**   | Object and mission layout files (places enemies, props, triggers, etc.) |
 | **K**     | Text/string files (alternative to .bin for localization and UI strings) |
 | **NOM**   | Animation files (mainly player character animations) |
-| **SFD**   | Video/cutscene files (often paired with ADX audio) |
+| **SFD**   | Video/cutscene files |
 | **PSO**   | Compiled Pixel Shader Object |
 | **VSO**   | Compiled Vertex Shader Object |
 | **XNA**   | Bone/skeleton name files |
 | **XNCP**  | UI layout and control files (HUD, menus, interfaces) |
 | **XNCF**  | Bitmap font tables that map characters to subimages in a paired XNCP atlas (HUD, menus, interfaces) |
+| **XNF**   | Sega Ninja Next framework skeletal animation or morph motion files |
 | **XNJ**   | 3D model files, Actual Bones/Skeleton |
 | **XNM**   | Model material and mesh data (usually paired with XNJ) |
 | **XNR**   | Parameter/data table files (UI/HUD Scaling, item stats, weapons, enemy drops, skills, technics, AI, etc.) |
