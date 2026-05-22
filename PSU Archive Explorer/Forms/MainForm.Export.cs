@@ -494,8 +494,8 @@ namespace psu_archive_explorer
 
                 MessageBox.Show(
                     "No archive is currently loaded. Open an archive first, then use " +
-                    "Export All to extract its contents.",
-                    "Export All",
+                    "Export Container to extract its contents.",
+                    "Export Container",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
                 return;
@@ -817,6 +817,8 @@ namespace psu_archive_explorer
                 bool isAdxFile = suggestedName.EndsWith(".adx", StringComparison.OrdinalIgnoreCase);
                 // Special handling for DAT sound files (xobxDDNS / xobxKPTD)
                 bool isDatFile = suggestedName.EndsWith(".dat", StringComparison.OrdinalIgnoreCase);
+                // Special handling for Sofdec video files
+                bool isSfdFile = suggestedName.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase);
 
                 if (currentRight is ITextureFile)
                 {
@@ -860,6 +862,14 @@ namespace psu_archive_explorer
                         exportFileDialog.FileName = Path.ChangeExtension(exportFileDialog.FileName, ".dat");
                         exportFileDialog.Filter = "DAT File (*.dat)|*.dat|All Files (*.*)|*.*";
                     }
+                }
+                else if (isSfdFile)
+                {
+                    // Default to MP4 (filter index 1). The user can switch to
+                    // MKV (lossless MPEG-1 passthrough) or raw SFD via the dropdown.
+                    exportFileDialog.FileName = Path.ChangeExtension(exportFileDialog.FileName, ".sfd");
+                    exportFileDialog.Filter = "SFD File (*.sfd)|*.sfd|MP4 Video (*.mp4)|*.mp4|MKV Video (*.mkv)|*.mkv";
+                    exportFileDialog.FilterIndex = 1;
                 }
 
                 if (exportFileDialog.ShowDialog() == DialogResult.OK)
@@ -962,6 +972,67 @@ namespace psu_archive_explorer
                             exportMetaData = false;
                             extractFile(currentRight, exportFileDialog.FileName);
                             exportMetaData = originalExportMetaData;
+                        }
+                    }
+                    else if (isSfdFile)
+                    {
+                        string chosenExt = Path.GetExtension(exportFileDialog.FileName).ToLowerInvariant();
+                        bool saveAsVideo = chosenExt == ".mp4" || chosenExt == ".mkv";
+
+                        if (saveAsVideo && currentRight is UnpointeredFile sfdUnpointed)
+                        {
+                            string outputPath = exportFileDialog.FileName;
+                            progressStatusLabel.Text = $"Exporting SFD to {chosenExt.ToUpperInvariant()}...";
+                            menuStrip1.Enabled = false;
+
+                            _ = Task.Run(() =>
+                            {
+                                try
+                                {
+                                    SfdExporter.ExportToVideo(sfdUnpointed.theData, outputPath);
+                                    this.Invoke((Action)(() =>
+                                    {
+                                        SetStatusTemporary($"Exported {Path.GetFileName(outputPath)}");
+                                        menuStrip1.Enabled = true;
+                                        MessageBox.Show(
+                                            $"Exported to:\n{outputPath}",
+                                            "SFD Export Complete",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Information);
+                                    }));
+                                }
+                                catch (Exception ex)
+                                {
+                                    this.Invoke((Action)(() =>
+                                    {
+                                        SetStatusTemporary("SFD export failed.");
+                                        menuStrip1.Enabled = true;
+
+                                        DialogResult fallback = MessageBox.Show(
+                                            $"SFD → {chosenExt.ToUpperInvariant()} export failed:\n\n{ex.Message}\n\n" +
+                                            "Would you like to save the raw .sfd file instead?",
+                                            "SFD Export Failed",
+                                            MessageBoxButtons.YesNo,
+                                            MessageBoxIcon.Warning);
+
+                                        if (fallback == DialogResult.Yes)
+                                        {
+                                            string sfdPath = Path.ChangeExtension(outputPath, ".sfd");
+                                            bool originalExportMetaData = exportMetaData;
+                                            exportMetaData = false;
+                                            extractFile(currentRight, sfdPath);
+                                            exportMetaData = originalExportMetaData;
+                                        }
+                                    }));
+                                }
+                            });
+                            // Return immediately — async export is in flight.
+                            return;
+                        }
+                        else
+                        {
+                            // User picked .sfd from the filter dropdown — raw extract.
+                            extractFile(currentRight, exportFileDialog.FileName);
                         }
                     }
                     else
@@ -1222,6 +1293,128 @@ namespace psu_archive_explorer
             };
 
             worker.RunWorkerAsync(fileNames);
+        }
+
+        // ----------------------------------------------------------------
+        // SFD Import
+        // ----------------------------------------------------------------
+
+        /// <summary>
+        /// Called from the right-click context menu "Import video as SFD..."
+        /// item, which is only shown when the selected file is an .sfd.
+        /// The user picks an MP4 or MKV, chooses an output path, and
+        /// SfdImporter handles the rest on a background thread.
+        /// </summary>
+        private void ImportVideoAsSfd()
+        {
+            // We need the original SFD bytes to extract resolution / audio params.
+            byte[] originalSfdBytes = null;
+            if (currentRight is UnpointeredFile sfdFile)
+                originalSfdBytes = sfdFile.theData;
+
+            if (originalSfdBytes == null || originalSfdBytes.Length == 0)
+            {
+                MessageBox.Show(
+                    "Could not read the original SFD data.\n\n" +
+                    "Make sure an SFD file is selected in the tree before importing.",
+                    "SFD Import",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Pick the source video file.
+            string inputPath;
+            using (var dlg = new OpenFileDialog())
+            {
+                dlg.Title = "Select video to import as SFD";
+                dlg.Filter = "Video Files (*.mp4;*.mkv)|*.mp4;*.mkv|All Files (*.*)|*.*";
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                inputPath = dlg.FileName;
+            }
+
+            // Pick the output SFD path.
+            string outputPath;
+            string suggestedName = currentRight?.filename ?? "output.sfd";
+            if (!suggestedName.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase))
+                suggestedName = Path.ChangeExtension(suggestedName, ".sfd");
+
+            using (var dlg = new SaveFileDialog())
+            {
+                dlg.Title = "Save imported SFD as...";
+                dlg.Filter = "SFD File (*.sfd)|*.sfd";
+                dlg.FileName = suggestedName;
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                outputPath = dlg.FileName;
+            }
+
+            // Capture locals for the lambda.
+            byte[] sfdSnapshot = originalSfdBytes;
+            progressStatusLabel.Text = "Importing video as SFD...";
+            menuStrip1.Enabled = false;
+
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    SfdImporter.ImportToSfd(inputPath, sfdSnapshot, outputPath);
+                    this.Invoke((Action)(() =>
+                    {
+                        SetStatusTemporary("SFD import complete.");
+                        menuStrip1.Enabled = true;
+                        MessageBox.Show(
+                            $"Saved to:\n{outputPath}",
+                            "SFD Import Complete",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    this.Invoke((Action)(() =>
+                    {
+                        SetStatusTemporary("SFD import failed.");
+                        menuStrip1.Enabled = true;
+                        MessageBox.Show(
+                            $"SFD import failed:\n\n{ex.Message}",
+                            "SFD Import Failed",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }));
+                }
+            });
+        }
+
+        // ----------------------------------------------------------------
+        // Status label helper
+        // ----------------------------------------------------------------
+
+        /// <summary>
+        /// Sets the progress status label text and automatically clears it
+        /// after <paramref name="delayMs"/> milliseconds (default 4 seconds).
+        /// Safe to call from any thread.
+        /// </summary>
+        private void SetStatusTemporary(string message, int delayMs = 4000)
+        {
+            // Set immediately on the UI thread.
+            if (progressStatusLabel.InvokeRequired)
+                progressStatusLabel.Invoke((Action)(() => progressStatusLabel.Text = message));
+            else
+                progressStatusLabel.Text = message;
+
+            // Clear after the delay. The label is only cleared if it still
+            // holds the same message we set, so a subsequent status update
+            // won't be wiped out early.
+            string snapshot = message;
+            Task.Delay(delayMs).ContinueWith(_ =>
+            {
+                if (progressStatusLabel.IsDisposed) return;
+                progressStatusLabel.Invoke((Action)(() =>
+                {
+                    if (progressStatusLabel.Text == snapshot)
+                        progressStatusLabel.Text = string.Empty;
+                }));
+            }, TaskScheduler.Default);
         }
     }
 }

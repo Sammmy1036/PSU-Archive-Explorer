@@ -70,6 +70,7 @@
             this.copyFilenameToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.copyPathToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.searchBox = new System.Windows.Forms.TextBox();
+            this.searchModeCombo = new System.Windows.Forms.ComboBox();
             this.searchStatusLabel = new System.Windows.Forms.Label();
             this.importDialog = new System.Windows.Forms.OpenFileDialog();
             this.setQuestButton = new System.Windows.Forms.Button();
@@ -161,7 +162,7 @@
             this.exportAllToolStripMenuItem.Name = "exportAllToolStripMenuItem";
             this.exportAllToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.A)));
             this.exportAllToolStripMenuItem.Size = new System.Drawing.Size(163, 22);
-            this.exportAllToolStripMenuItem.Text = "Export All";
+            this.exportAllToolStripMenuItem.Text = "Export Container";
             this.exportAllToolStripMenuItem.Click += new System.EventHandler(this.exportAllToolStripMenuItem_Click);
             // 
             // saveAsToolStripMenuItem
@@ -363,6 +364,7 @@
             this.splitContainer1.Panel1.Controls.Add(this.treeView1);
             this.splitContainer1.Panel1.Controls.Add(this.searchResults);
             this.splitContainer1.Panel1.Controls.Add(this.searchBox);
+            this.splitContainer1.Panel1.Controls.Add(this.searchModeCombo);
             this.splitContainer1.Panel1.Controls.Add(this.searchStatusLabel);
             // 
             // splitContainer1.Panel2
@@ -457,6 +459,29 @@
             this.searchBox.Enter += new System.EventHandler(this.searchBox_Enter);
             this.searchBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.searchBox_KeyDown);
             this.searchBox.Leave += new System.EventHandler(this.searchBox_Leave);
+            // 
+            // searchModeCombo
+            // 
+            // Hidden by default. MainForm constructor calls
+            // EnableStringSearchToggleIfAvailable() at startup, which probes
+            // for psu_string_index.gz and reveals this combo only if the
+            // index file is present. When visible, it anchors top-right of
+            // the search panel and reduces the search box width to make
+            // room.
+            this.searchModeCombo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.searchModeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.searchModeCombo.FlatStyle = System.Windows.Forms.FlatStyle.System;
+            this.searchModeCombo.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.searchModeCombo.Items.AddRange(new object[] {
+            "Files",
+            "Strings"});
+            this.searchModeCombo.Location = new System.Drawing.Point(192, 0);
+            this.searchModeCombo.Name = "searchModeCombo";
+            this.searchModeCombo.Size = new System.Drawing.Size(80, 23);
+            this.searchModeCombo.TabIndex = 31;
+            this.searchModeCombo.SelectedIndex = 0;
+            this.searchModeCombo.Visible = false;
+            this.searchModeCombo.SelectedIndexChanged += new System.EventHandler(this.searchModeCombo_SelectedIndexChanged);
             // 
             // searchStatusLabel
             // 
@@ -744,6 +769,7 @@
         private System.Windows.Forms.ToolStripMenuItem deleteFileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem addFileToolStripMenuItem;
         private System.Windows.Forms.TextBox searchBox;
+        private System.Windows.Forms.ComboBox searchModeCombo;
         private System.Windows.Forms.ListView searchResults;
         private System.Windows.Forms.Label searchStatusLabel;
         private System.Windows.Forms.ContextMenuStrip searchResultContextMenu;

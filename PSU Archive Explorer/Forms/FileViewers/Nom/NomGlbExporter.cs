@@ -54,19 +54,19 @@ namespace psu_archive_explorer.Exporters
                 { "Neck_root",  "Spine1"  },
                 { "Neck",       "Neck_root" },
                 { "Head",       "Neck"    },
-                { "L_clavicle", "Neck_root" },   // corrected per XNJ data
+                { "L_clavicle", "Neck_root" },
                 { "L_upperarm", "L_clavicle" },
                 { "L_forearm",  "L_upperarm" },
                 { "L_hand",     "L_forearm"  },
                 { "L_weapon",   "L_hand"  },
-                { "R_clavicle", "Neck_root" },   // corrected per XNJ data
+                { "R_clavicle", "Neck_root" },
                 { "R_upperarm", "R_clavicle" },
                 { "R_forearm",  "R_upperarm" },
                 { "R_hand",     "R_forearm"  },
                 { "R_weapon",   "R_hand"  },
                 { "L_breast",   "Spine1"  },
                 { "R_breast",   "Spine1"  },
-                { "Belly",      "Spine"   },     // corrected per XNJ data
+                { "Belly",      "Spine"   },
                 { "Body",       "Root"    },
             };
 

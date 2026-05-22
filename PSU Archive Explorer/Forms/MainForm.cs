@@ -80,6 +80,13 @@ namespace psu_archive_explorer
                 "psu_file_index.gz");
             FileIndex.LoadFromFile(indexPath);
 
+            // Probe for the optional string index file. Only its existence is
+            // checked here — the file itself can be hundreds of MB and is
+            // lazy-loaded on first use via the search mode toggle. If the
+            // file isn't present, the toggle stays hidden and nothing about
+            // search behavior changes.
+            EnableStringSearchToggleIfAvailable();
+
             // Wire up dead-space click handlers so the "Search files..." placeholder
             // is restored when the user clicks anywhere off the search box.
             WireSearchFocusDrop();

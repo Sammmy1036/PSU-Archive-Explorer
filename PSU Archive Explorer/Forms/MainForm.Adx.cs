@@ -65,24 +65,6 @@ namespace psu_archive_explorer
             }
         }
 
-        // ====================== Open File Handler ======================
-        private void openToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (fileDialog.ShowDialog() == DialogResult.OK)
-            {
-                string fileName = fileDialog.FileName;
-                this.Text = "PSU Archive Explorer " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version + " " + Path.GetFileName(fileName);
-                ClearRightPanel();
-                pendingAdxReplacementBytes = null;
-
-                bool success = openPSUArchive(fileName, treeView1.Nodes);
-
-                if (!success)
-                {
-                    TryOpenAsAdx(fileName);
-                }
-            }
-        }
 
         // ====================== Smart ADX Detection & Open ======================
         private void TryOpenAsAdx(string fileName)

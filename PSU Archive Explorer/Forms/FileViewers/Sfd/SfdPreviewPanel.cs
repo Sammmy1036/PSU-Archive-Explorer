@@ -239,14 +239,13 @@ namespace psu_archive_explorer
                 _framerate = decoder.Framerate > 0 ? decoder.Framerate : 30000.0 / 1001.0;
                 double frameIntervalMs = 1000.0 / _framerate;
 
-                // First pass estimate of total frames is not available from pl_mpeg
-                // without decoding. We estimate from ADX duration if we have audio,
-                // otherwise leave the total at 0 and update as we go.
-                if (_waveReader != null)
-                {
-                    double seconds = _waveReader.TotalTime.TotalSeconds;
-                    _totalFrames = (int)Math.Round(seconds * _framerate);
-                }
+                // Count MPEG-1 picture start codes (00 00 01 00) in the video
+                // ES to get the exact frame count without decoding. This is a
+                // fast byte scan — no YUV conversion, no bitmap allocation —
+                // so even a 500 MB file completes in well under a second.
+                // pl_mpeg exposes no duration/frame-count API, and estimating
+                // from ADX audio length is unreliable (audio is often longer).
+                _totalFrames = CountMpeg1Frames(videoEs);
 
                 InvokeSafe(() =>
                 {
@@ -257,6 +256,10 @@ namespace psu_archive_explorer
                     SetStatus("Ready to play " + (_displayName ?? ""));
                     UpdateTimeLabel(0);
                 });
+
+                // Tracks the true number of frames decoded; used after the loop
+                // to correct _totalFrames and the seekbar maximum to the real value.
+                int actualFrames = 0;
 
                 var enumerator = decoder.DecodeFrames().GetEnumerator();
                 var sw = new System.Diagnostics.Stopwatch();
@@ -283,6 +286,7 @@ namespace psu_archive_explorer
                     }
                     if (frame == null) continue;
                     frameCount++;
+                    actualFrames++;
 
                     // -- Pause loop: hold current frame visible --
                     bool showedWhilePaused = false;
@@ -338,6 +342,25 @@ namespace psu_archive_explorer
 
                     if (!showedWhilePaused) ShowFrame(frame);
                     UpdateProgress(frameCount);
+                }
+
+                // End of stream: correct _totalFrames to the real decoded
+                // frame count so the seekbar maximum reflects actual video
+                // length rather than the (often longer) ADX audio duration.
+                if (actualFrames > 0)
+                {
+                    _totalFrames = actualFrames;
+                    InvokeSafe(() =>
+                    {
+                        _suppressSeekEvent = true;
+                        try
+                        {
+                            _seekBar.Maximum = _totalFrames;
+                            _seekBar.Value = _totalFrames;
+                        }
+                        finally { _suppressSeekEvent = false; }
+                        UpdateTimeLabel(_totalFrames);
+                    });
                 }
 
                 // End of stream — stop audio, reset UI
@@ -486,6 +509,34 @@ namespace psu_archive_explorer
             _suppressSeekEvent = true;
             try { /* position is rewritten on next UpdateProgress tick */ }
             finally { _suppressSeekEvent = false; }
+        }
+
+        // ==================================================================
+        // MPEG-1 frame counter
+        // ==================================================================
+
+        /// <summary>
+        /// Counts MPEG-1 picture start codes (00 00 01 00) in a video
+        /// elementary stream. Each picture start code corresponds to exactly
+        /// one frame, so this gives an exact frame count with no decoding.
+        /// </summary>
+        private static int CountMpeg1Frames(byte[] es)
+        {
+            int count = 0;
+            int end = es.Length - 3;
+            for (int i = 0; i < end; i++)
+            {
+                // Picture start code: 00 00 01 00
+                if (es[i] == 0x00 &&
+                    es[i + 1] == 0x00 &&
+                    es[i + 2] == 0x01 &&
+                    es[i + 3] == 0x00)
+                {
+                    count++;
+                    i += 3; // skip past this start code
+                }
+            }
+            return count > 0 ? count : 1;
         }
 
         // ==================================================================

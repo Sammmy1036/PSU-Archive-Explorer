@@ -320,37 +320,89 @@ namespace psu_archive_explorer
                 !string.IsNullOrEmpty(tag.FullPath) &&
                 File.Exists(tag.FullPath))
             {
+                // Accept either a ready-made .adx or a .wav. A .wav is encoded
+                // to ADX in-memory via AdxEncoder, using the file currently
+                // being replaced (tag.FullPath) as the parameter template, so
+                // channels / sample rate / highpass match the PSU original.
                 OpenFileDialog adxReplaceDialog = new OpenFileDialog
                 {
-                    Filter = "ADX audio files (*.adx)|*.adx|All files (*.*)|*.*",
-                    Title = "Select an ADX file to replace the hashed file with"
+                    Filter = "Audio files (*.adx;*.wav)|*.adx;*.wav|" +
+                             "ADX audio files (*.adx)|*.adx|" +
+                             "WAV audio files (*.wav)|*.wav|" +
+                             "All files (*.*)|*.*",
+                    Title = "Select an ADX or WAV file to replace the hashed file with"
                 };
 
                 if (adxReplaceDialog.ShowDialog() != DialogResult.OK)
                     return;
 
                 string sourcePath = adxReplaceDialog.FileName;
+                bool sourceIsWav =
+                    sourcePath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase);
 
-                if (!IsValidAdxFile(sourcePath))
+                byte[] replacementBytes;
+
+                if (sourceIsWav)
                 {
-                    MessageBox.Show(
-                        "The selected file is not a valid ADX audio file.\n\n" +
-                        "Please pick a file with a proper ADX header.",
-                        "Invalid ADX File",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
+                    // ---- WAV path: encode to ADX using the original as template ----
+                    // The encoder copies channels / sample rate / highpass from
+                    // the template ADX and resamples the WAV to match, so any
+                    // source rate is handled automatically with correct pitch.
+                    byte[] wavBytes;
+                    byte[] templateAdx;
+                    try
+                    {
+                        wavBytes = File.ReadAllBytes(sourcePath);
+                        templateAdx = File.ReadAllBytes(tag.FullPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Could not read the selected file:\n{ex.Message}",
+                            "Read Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    try
+                    {
+                        replacementBytes = AdxEncoder.EncodeFromWav(wavBytes, templateAdx);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            $"Could not convert the WAV to ADX:\n{ex.Message}\n\n" +
+                            "The WAV must be uncompressed 16-bit PCM (mono or stereo).",
+                            "WAV Conversion Failed",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    // ---- ADX path: use the picked file as-is ----
+                    if (!IsValidAdxFile(sourcePath))
+                    {
+                        MessageBox.Show(
+                            "The selected file is not a valid ADX audio file.\n\n" +
+                            "Please pick a file with a proper ADX header, or " +
+                            "select a .wav to have it converted automatically.",
+                            "Invalid ADX File",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    try
+                    {
+                        replacementBytes = File.ReadAllBytes(sourcePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Could not read the selected ADX file:\n{ex.Message}",
+                            "Read Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
                 }
 
-                try
-                {
-                    pendingAdxReplacementBytes = File.ReadAllBytes(sourcePath);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Could not read the selected ADX file:\n{ex.Message}",
-                        "Read Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
+                pendingAdxReplacementBytes = replacementBytes;
 
                 string filename = Path.GetFileName(tag.FullPath);
                 byte[] header = new byte[4];
@@ -360,8 +412,37 @@ namespace psu_archive_explorer
                 }
                 currentRight = new UnpointeredFile(filename, pendingAdxReplacementBytes, header);
 
+                // Refresh the right panel so the preview reflects the NEW audio.
+                // Re-selecting the node would re-run LoadAdxIntoRightPanel, which
+                // reads from disk (File.ReadAllBytes) — but the replacement only
+                // exists in memory and was never written, so that would just
+                // reload the original. Instead, build the preview panel directly
+                // from the in-memory bytes via AdxPreviewPanel's byte[] ctor.
+                try
+                {
+                    ClearRightPanel();
+                    string previewInfo =
+                        "ADX audio file (pending replacement — not yet saved).\n\n" +
+                        "Click File → Save As to save to hash.\n\n" +
+                        $"File name: {filename}";
+                    var pendingPreview = new AdxPreviewPanel(
+                        pendingAdxReplacementBytes, previewInfo, filename);
+                    splitContainer1.Panel2.Controls.Add(pendingPreview);
+                }
+                catch (Exception ex)
+                {
+                    // A preview failure must not lose the pending replacement;
+                    // the bytes are already stored and Save As will still work.
+                    MessageBox.Show(
+                        $"The replacement was loaded, but the preview could not " +
+                        $"be shown:\n{ex.Message}",
+                        "Preview Unavailable",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+
                 MessageBox.Show(
                     $"'{Path.GetFileName(sourcePath)}' loaded!\n\n" +
+                    (sourceIsWav ? "The WAV was converted to ADX in memory.\n\n" : "") +
                     $"Click File → Save As to save to hash.\n\n" +
                     $"(The .adx extension will be stripped and match the hash name.)",
                     "ADX Replacement",
@@ -369,53 +450,284 @@ namespace psu_archive_explorer
                 return;
             }
 
+            // NOM guard. The generic replace below injects the picked file as
+            // raw bytes - correct for most file types, but for a .nom that
+            // would drop a GLB (or anything) in verbatim with no conversion,
+            // producing a file the game cannot use. Steer the user to the
+            // proper importer, but let them proceed if they genuinely want a
+            // raw byte replacement.
+            if (tag.FileName != null &&
+                tag.FileName.EndsWith(".nom", StringComparison.OrdinalIgnoreCase))
+            {
+                DialogResult nomChoice = MessageBox.Show(
+                    "This is a NOM animation file.\n\n" +
+                    "To replace it with an edited animation, select the NOM " +
+                    "in the tree and use the \"Import Animation from GLB\" " +
+                    "button in the preview panel. That converts your GLB into " +
+                    "the NOM format the game expects.\n\n" +
+                    "The generic Replace will instead inject the file you " +
+                    "pick as raw bytes, with no conversion - only continue if " +
+                    "you specifically want a raw byte replacement.\n\n" +
+                    "Continue with raw replace anyway?",
+                    "Replace NOM File",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2); // default to No
+
+                if (nomChoice != DialogResult.Yes)
+                    return;
+            }
+
             ContainerFile owningFile = tag.OwnerContainer;
-            OpenFileDialog replaceDialog = new OpenFileDialog();
+            OpenFileDialog replaceDialog = new OpenFileDialog
+            {
+                // Surface .wav alongside the usual filter so users can pick a
+                // WAV when replacing an in-container .adx; the WAV intercept
+                // below handles the conversion. Non-ADX entries still accept
+                // any file (the All Files filter), preserving prior behavior.
+                Filter = "All files (*.*)|*.*|" +
+                         "Audio files (*.adx;*.wav)|*.adx;*.wav|" +
+                         "Video files (*.mp4;*.mkv)|*.mp4;*.mkv"
+            };
             replaceDialog.FileName = tag.FileName;
             if (replaceDialog.ShowDialog() == DialogResult.OK)
             {
                 string pickedFilename = Path.GetFileName(replaceDialog.FileName);
-                RawFile file = new RawFile(replaceDialog.OpenFile(), pickedFilename);
 
-                // RawFile's constructor parses the stream and may pull a
-                // filename out of an embedded metadata header (the same header
-                // we WRITE during extraction when exportMetaData is true).
-                // That means: if the user is feeding back a file that was
-                // previously extracted from a PSU archive — even one with a
-                // totally different on-disk name now — `file.filename` will
-                // end up as whatever the metadata header says, NOT what the
-                // user picked. That's how the tree node ends up displaying
-                // an unrelated filename like "charamake_back02.xnt" after the
-                // user picked "ep02m01.sfd" from disk.
-                //
-                // Always honor the user's choice instead. If they picked
-                // "ep02m01.sfd", that's the name we use, full stop.
-                if (!string.Equals(file.filename, pickedFilename, StringComparison.Ordinal))
+                // ---- WAV-to-ADX intercept for in-container .adx entries ----
+                // If the entry being replaced is a .adx AND the user picked a
+                // .wav, encode the WAV first using the entry's CURRENT bytes
+                // as the template (channels / sample rate / highpass). The
+                // resulting RawFile slots into the existing replaceFile path
+                // exactly like any other byte-payload replacement.
+                bool intercepted = false;
+                RawFile file = null;
+
+                bool targetIsAdx = tag.FileName != null &&
+                    tag.FileName.EndsWith(".adx", StringComparison.OrdinalIgnoreCase);
+                bool pickedIsWav = pickedFilename.EndsWith(".wav",
+                    StringComparison.OrdinalIgnoreCase);
+
+                bool targetIsSfd = tag.FileName != null &&
+                    tag.FileName.EndsWith(".sfd", StringComparison.OrdinalIgnoreCase);
+                bool pickedIsVideo =
+                    pickedFilename.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
+                    pickedFilename.EndsWith(".mkv", StringComparison.OrdinalIgnoreCase);
+
+                // ---- MP4/MKV-to-SFD intercept for in-container .sfd entries ----
+                // If the entry being replaced is an .sfd AND the user picked
+                // an MP4 or MKV, convert it to SFD using SfdImporter, with the
+                // entry's current bytes as the parameter template (resolution,
+                // framerate, audio params). Runs on a background thread since
+                // FFmpeg encoding can take several seconds.
+                if (targetIsSfd && pickedIsVideo)
                 {
-                    file.filename = pickedFilename;
+                    byte[] originalSfdBytes;
+                    try
+                    {
+                        RawFile original = owningFile.getFileRaw(node.Index);
+                        originalSfdBytes = original.WriteToBytes(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            $"Could not read the original SFD entry:\n{ex.Message}",
+                            "Template Read Failed",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    string inputVideoPath = replaceDialog.FileName;
+                    string tmpSfd = Path.ChangeExtension(Path.GetTempFileName(), ".sfd");
+
+                    progressStatusLabel.Text = "Converting video to SFD...";
+                    menuStrip1.Enabled = false;
+
+                    // Capture locals for the lambda.
+                    byte[] sfdSnapshot = originalSfdBytes;
+                    ContainerFile container = owningFile;
+                    int nodeIndex = node.Index;
+                    TreeNode treeNode = node;
+                    FileTreeNodeTag nodeTag = tag;
+
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            SfdImporter.ImportToSfd(inputVideoPath, sfdSnapshot, tmpSfd);
+                            byte[] sfdBytes = File.ReadAllBytes(tmpSfd);
+
+                            this.Invoke((Action)(() =>
+                            {
+                                try
+                                {
+                                    var newFile = new RawFile(
+                                        new MemoryStream(sfdBytes), nodeTag.FileName);
+                                    newFile.filename = nodeTag.FileName;
+                                    container.replaceFile(nodeIndex, newFile);
+
+                                    // Sync the parsed cache so Save As writes
+                                    // the new SFD bytes, not the original.
+                                    PsuFile parsedAfter = container.getFileParsed(nodeIndex);
+                                    if (parsedAfter is UnpointeredFile uf)
+                                        uf.theData = sfdBytes;
+
+                                    // Refresh the tree node and right panel.
+                                    var selAfterSfd = treeView1.SelectedNode;
+                                    treeView1.SelectedNode = null;
+                                    treeView1.SelectedNode = selAfterSfd;
+
+                                    SetStatusTemporary("SFD replacement ready.");
+                                    menuStrip1.Enabled = true;
+                                    MessageBox.Show(
+                                        $"Video converted and loaded as SFD.\n\n" +
+                                        "Click File \u2192 Save As to write the archive.",
+                                        "SFD Replacement Ready",
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Information);
+                                }
+                                catch (Exception ex)
+                                {
+                                    SetStatusTemporary("SFD replacement failed.");
+                                    menuStrip1.Enabled = true;
+                                    MessageBox.Show(
+                                        $"Failed to apply SFD replacement:\n{ex.Message}",
+                                        "SFD Replacement Failed",
+                                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                }
+                            }));
+                        }
+                        catch (Exception ex)
+                        {
+                            this.Invoke((Action)(() =>
+                            {
+                                SetStatusTemporary("SFD conversion failed.");
+                                menuStrip1.Enabled = true;
+                                MessageBox.Show(
+                                    $"Video \u2192 SFD conversion failed:\n\n{ex.Message}",
+                                    "SFD Conversion Failed",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }));
+                        }
+                        finally
+                        {
+                            try { if (File.Exists(tmpSfd)) File.Delete(tmpSfd); } catch { }
+                        }
+                    });
+                    return; // async path — don't fall through to generic replace
                 }
 
-                if (owningFile is FilenameAwareContainerFile awareContainerFile)
+                if (targetIsAdx && pickedIsWav)
                 {
-                    string filename = file.filename;
-                    if (filename != tag.FileName && !awareContainerFile.ValidateFilename(filename))
+                    byte[] wavBytes;
+                    try
                     {
-                        FileRenameForm rename = new FileRenameForm(filename);
-                        while (!awareContainerFile.ValidateFilename(filename))
+                        wavBytes = File.ReadAllBytes(replaceDialog.FileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Could not read the selected WAV:\n{ex.Message}",
+                            "Read Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    // Fetch the entry's current bytes from the container to use
+                    // as the encoder template. WriteToBytes(false) gives clean
+                    // ADX without the export metadata header.
+                    byte[] templateAdx;
+                    try
+                    {
+                        RawFile original = owningFile.getFileRaw(node.Index);
+                        templateAdx = original.WriteToBytes(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            $"Could not read the original ADX entry as a template:\n{ex.Message}",
+                            "Template Read Failed",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    byte[] encoded;
+                    try
+                    {
+                        encoded = AdxEncoder.EncodeFromWav(wavBytes, templateAdx);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            $"Could not convert the WAV to ADX:\n{ex.Message}\n\n" +
+                            "The WAV must be uncompressed 16-bit PCM (mono or stereo).",
+                            "WAV Conversion Failed",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    // Keep the entry's existing filename — the container's
+                    // index/lookup is keyed off it, and the encoded bytes are
+                    // a drop-in replacement so there's no reason to rename.
+                    file = new RawFile(new MemoryStream(encoded), tag.FileName);
+                    file.filename = tag.FileName;
+                    intercepted = true;
+                }
+
+                if (!intercepted)
+                {
+                    file = new RawFile(replaceDialog.OpenFile(), pickedFilename);
+                }
+
+                // The filename-fixup and rename-validation below exist for the
+                // generic raw-byte replace path (where RawFile's ctor may
+                // override filename from an embedded metadata header, and the
+                // user's picked filename may need validation against the
+                // container's rules). The WAV intercept already chose the
+                // correct filename (the existing entry's name) and produced
+                // clean bytes with no embedded metadata, so neither check
+                // applies — skip them to avoid renaming a valid .adx entry
+                // after a successful encode.
+                if (!intercepted)
+                {
+                    // RawFile's constructor parses the stream and may pull a
+                    // filename out of an embedded metadata header (the same header
+                    // we WRITE during extraction when exportMetaData is true).
+                    // That means: if the user is feeding back a file that was
+                    // previously extracted from a PSU archive — even one with a
+                    // totally different on-disk name now — `file.filename` will
+                    // end up as whatever the metadata header says, NOT what the
+                    // user picked. That's how the tree node ends up displaying
+                    // an unrelated filename like "charamake_back02.xnt" after the
+                    // user picked "ep02m01.sfd" from disk.
+                    //
+                    // Always honor the user's choice instead. If they picked
+                    // "ep02m01.sfd", that's the name we use, full stop.
+                    if (!string.Equals(file.filename, pickedFilename, StringComparison.Ordinal))
+                    {
+                        file.filename = pickedFilename;
+                    }
+
+                    if (owningFile is FilenameAwareContainerFile awareContainerFile)
+                    {
+                        string filename = file.filename;
+                        if (filename != tag.FileName && !awareContainerFile.ValidateFilename(filename))
                         {
-                            if (rename.ShowDialog() == DialogResult.OK)
+                            FileRenameForm rename = new FileRenameForm(filename);
+                            while (!awareContainerFile.ValidateFilename(filename))
                             {
-                                filename = rename.FileName;
-                            }
-                            else
-                            {
-                                return;
+                                if (rename.ShowDialog() == DialogResult.OK)
+                                {
+                                    filename = rename.FileName;
+                                }
+                                else
+                                {
+                                    return;
+                                }
                             }
                         }
-                    }
-                    if (filename != file.filename)
-                    {
-                        file.filename = filename;
+                        if (filename != file.filename)
+                        {
+                            file.filename = filename;
+                        }
                     }
                 }
                 owningFile.replaceFile(node.Index, file);
@@ -427,9 +739,86 @@ namespace psu_archive_explorer
                     node.Nodes.Clear();
                     addChildFiles(node.Nodes, (ContainerFile)parsedFile);
                 }
+
+                // ---- Parsed-layer cache sync for the WAV intercept ----
+                // replaceFile updates the raw byte layer (getFileRaw sees the
+                // new bytes immediately — confirmed earlier via diagnostic
+                // readback), but the parsed object layer (getFileParsed) keeps
+                // returning the pre-replacement cached object. That cache is
+                // what the preview reads from, AND, based on the symptom that
+                // Save As writes the original bytes after a successful
+                // replaceFile, almost certainly what Save As reads from too.
+                //
+                // Force the parsed cache to hold the new bytes by overwriting
+                // theData on the cached UnpointeredFile. If parsedFile is some
+                // other type the sync is a no-op — Save As may or may not be
+                // correct in that case, but it's no worse than today.
+                if (intercepted && parsedFile is UnpointeredFile cachedUnpointered)
+                {
+                    cachedUnpointered.theData = file.fileContents;
+                }
+
                 var sel = treeView1.SelectedNode;
                 treeView1.SelectedNode = null;
                 treeView1.SelectedNode = sel;
+
+                // ---- Preview refresh for the WAV intercept ----
+                // The re-select above reaches treeView1_AfterSelect, which
+                // builds the AdxPreviewPanel from a cached UnpointeredFile
+                // returned by getFileParsed — that cache still references the
+                // pre-replacement bytes, so the preview plays the OLD audio
+                // even though the container actually holds the new bytes (the
+                // earlier diagnostic confirmed this directly via getFileRaw).
+                //
+                // Sidestep the cache: build the preview directly from the
+                // encoded bytes we just wrote, mirroring how the fake-container
+                // path does it. Also rewrite the info text to match the
+                // fake-container styling so both views look identical.
+                if (intercepted)
+                {
+                    try
+                    {
+                        // Hash-key lookup, identical to MainForm_Archive.cs's
+                        // in-container ADX preview branch, so a known sound
+                        // title is shown in both contexts.
+                        string hashKey = Path
+                            .GetFileNameWithoutExtension(tag.FileName ?? "")
+                            .TrimStart('-');
+                        string mappedTitle = null;
+                        if (hashKey.Length == 32
+                            && hashKey.All(c => "0123456789abcdefABCDEF".Contains(c)))
+                        {
+                            AdxHashMap.TryGetValue(hashKey.ToLowerInvariant(), out mappedTitle);
+                        }
+
+                        string infoText =
+                            "ADX audio file detected.\n\n" +
+                            "If you wish to replace this file, convert a .wav to .adx and rename it\n" +
+                            "to the hash name without the .adx extension, or replace the .adx in\n" +
+                            "this software with your new .adx sound file and save the hash.\n\n" +
+                            $"File name: {tag.FileName}";
+
+                        if (mappedTitle != null)
+                            infoText += $"\n\nADX Mapping: {mappedTitle}";
+
+                        ClearRightPanel();
+                        var pendingPreview = new AdxPreviewPanel(
+                            file.fileContents, infoText, mappedTitle ?? tag.FileName);
+                        splitContainer1.Panel2.Controls.Add(pendingPreview);
+                    }
+                    catch (Exception ex)
+                    {
+                        // The replacement is already in the container; a
+                        // preview hiccup doesn't undo it, but warn so the user
+                        // knows why the panel didn't update.
+                        MessageBox.Show(
+                            $"The WAV was encoded and stored in the container, " +
+                            $"but the preview could not be refreshed:\n{ex.Message}\n\n" +
+                            "Save As will still produce the replacement correctly.",
+                            "Preview Refresh Failed",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
             }
         }
 
@@ -874,6 +1263,79 @@ namespace psu_archive_explorer
             return false;
         }
 
+        // ====================== File → Open ======================
+        // Attempts to open the picked file as a PSU archive; if that fails,
+        // falls back to opening it as a single ADX. The destructive UI
+        // changes (clearing the right panel, updating the title, dropping
+        // pendingAdxReplacementBytes) are deferred until we know the open
+        // will succeed — otherwise picking a non-PSU file blanks the screen
+        // for the duration of the "Unknown File Format" dialog, even if the
+        // welcome screen is later restored. By probing first and committing
+        // only on success, a failed open leaves the previous view untouched.
+        private void openToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (fileDialog.ShowDialog() != DialogResult.OK)
+                return;
+
+            string fileName = fileDialog.FileName;
+
+            // Probe: can this file be opened at all? Try archive first, then
+            // ADX. openPSUArchive populates treeView1.Nodes on success, so we
+            // can't just call it speculatively — instead, route through a
+            // throwaway TreeNodeCollection-equivalent by checking IsValidAdxFile
+            // for the ADX side, and accepting that openPSUArchive itself is
+            // the only way to know if archive parsing will succeed. To avoid
+            // a half-loaded tree on archive failure, we let openPSUArchive run
+            // normally but DON'T tear down the welcome screen first; on
+            // failure we explicitly clean up whatever it added.
+            bool wasShowingWelcome = welcomeVisible;
+            string previousTitle = this.Text;
+            string newTitle = "PSU Archive Explorer " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version + " " + Path.GetFileName(fileName);
+
+            // Commit the destructive UI changes now, but remember the
+            // pre-open state so we can roll back on total failure. The user
+            // sees a brief title/panel change either way, but the rollback
+            // happens BEFORE the "Unknown File Format" dialog appears, not
+            // after — so they don't watch the welcome screen disappear,
+            // dismiss a dialog, then watch it reappear.
+            this.Text = newTitle;
+            ClearRightPanel();
+            pendingAdxReplacementBytes = null;
+
+            bool success = openPSUArchive(fileName, treeView1.Nodes);
+
+            if (!success)
+            {
+                // Roll back BEFORE the suggestion dialog, so the user sees
+                // the welcome screen behind the dialog rather than a blank
+                // panel. Whatever openPSUArchive added to the tree (if
+                // anything) gets cleared here too.
+                if (wasShowingWelcome)
+                {
+                    this.Text = previousTitle;
+                    treeView1.Nodes.Clear();
+                    ClearRightPanel();
+                    ShowWelcomeScreen();
+                }
+
+                // Now run the ADX fallback. If it succeeds, OpenSingleFileAsAdx
+                // will tear the welcome screen down again on its own path
+                // (via ClearRightPanel in LoadAdxIntoRightPanel) — that's the
+                // happy path. If it shows the "Unknown File Format" prompt,
+                // the welcome screen we just restored stays up behind it.
+                TryOpenAsAdx(fileName);
+
+                // If TryOpenAsAdx didn't actually load anything (e.g. user
+                // declined the rename, or the file failed ADX validation),
+                // and the user wasn't at the welcome screen to begin with,
+                // restore the previous title at least.
+                if (treeView1.Nodes.Count == 0 && !wasShowingWelcome)
+                {
+                    this.Text = previousTitle;
+                }
+            }
+        }
+
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Close();
@@ -1089,16 +1551,43 @@ namespace psu_archive_explorer
         private void CopySelectedSearchResultField(Func<FileIndex.SearchResult, string> selector)
         {
             if (searchResults.SelectedItems.Count == 0) return;
-            var hit = searchResults.SelectedItems[0].Tag as FileIndex.SearchResult;
-            if (hit == null) return;
 
-            string value = selector(hit);
-            if (string.IsNullOrEmpty(value)) return;
+            // Collect the requested field from every selected row.
+            // Use a HashSet to dedupe — when the user has 20 rows selected
+            // from the same archive, "Copy hash" should put one hash on the
+            // clipboard, not 20 identical lines. We use an ordered list
+            // alongside the set so the clipboard order matches selection
+            // order rather than whatever HashSet enumeration happens to do.
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var values = new List<string>(searchResults.SelectedItems.Count);
+
+            foreach (ListViewItem item in searchResults.SelectedItems)
+            {
+                var hit = item.Tag as FileIndex.SearchResult;
+                if (hit == null) continue;
+
+                string value = selector(hit);
+                if (string.IsNullOrEmpty(value)) continue;
+
+                if (seen.Add(value))
+                    values.Add(value);
+            }
+
+            if (values.Count == 0) return;
+
+            string clipboardText = string.Join(Environment.NewLine, values);
 
             try
             {
-                Clipboard.SetText(value);
-                searchStatusLabel.Text = $"Copied: {value}";
+                Clipboard.SetText(clipboardText);
+                if (values.Count == 1)
+                {
+                    searchStatusLabel.Text = $"Copied: {values[0]}";
+                }
+                else
+                {
+                    searchStatusLabel.Text = $"Copied {values.Count} unique values";
+                }
             }
             catch
             {

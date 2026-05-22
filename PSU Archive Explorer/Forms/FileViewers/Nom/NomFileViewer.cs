@@ -131,19 +131,15 @@ namespace psu_archive_explorer
             // grow tall enough to show a wrapped second row instead of clipping
             // it — important now that the Export button has been moved in here
             // and the bar can hold more than one row's worth of controls.
-            var controlBar = new FlowLayoutPanel
+            var controlBar = new Panel
             {
                 Dock = DockStyle.Top,
-                FlowDirection = FlowDirection.LeftToRight,
                 Padding = new Padding(8),
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                WrapContents = true,
-                MinimumSize = new Size(0, 45)
+                Height = 52
             };
 
-            var btnPlayPause = new Button { Text = "▶ Play", Width = 90, Height = 30 };
-            var btnRestart = new Button { Text = "↺ Restart", Width = 90, Height = 30 };
+            var btnPlayPause = new Button { Text = "▶ Play", Width = 90, Height = 30, Margin = new Padding(3, 6, 3, 3) };
+            var btnRestart = new Button { Text = "↺ Restart", Width = 90, Height = 30, Margin = new Padding(3, 6, 3, 3) };
             var trackTime = new TrackBar
             {
                 Width = 350,
@@ -217,6 +213,15 @@ namespace psu_archive_explorer
             };
             btnExport.Click += exportGlbButton_Click;
 
+            var btnImport = new Button
+            {
+                Text = "Import Animation from GLB",
+                Width = 180,
+                Height = 30,
+                Margin = new Padding(3, 3, 3, 3)
+            };
+            btnImport.Click += btnImport_Click;
+
             btnPlayPause.Click += (s, e) =>
             {
                 previewControl.TogglePlayPause();
@@ -268,35 +273,6 @@ namespace psu_archive_explorer
                 trackTime.Value = v;
             };
 
-            // Layout of the preview tab, top to bottom:
-            //   controlBar  (Dock=Top)  — Play / Restart / Export / trackbar,
-            //                             flowing + wrapping as before.
-            //   bottomRow   (Dock=Top)  — time readout (left) + speed (right).
-            //   previewControl (Fill)   — the skeleton drawing.
-            //
-            // bottomRow is its OWN Dock=Top panel rather than another item
-            // inside the FlowLayoutPanel, for two reasons:
-            //   1) A FlowLayoutPanel only packs left-to-right — it can't push
-            //      the speed control to the right edge. A plain Panel can:
-            //      dock the time label Left, dock the speed group Right.
-            //   2) Because bottomRow is Dock=Top, docking gives it the full
-            //      pane width automatically — no manual width tracking, and
-            //      nothing to get wrong during the initial layout pass.
-            var bottomRow = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 38
-            };
-
-            // Time readout docks to the left edge of the row.
-            lblTime.Dock = DockStyle.Left;
-            lblTime.TextAlign = ContentAlignment.MiddleLeft;
-
-            // Speed label + dropdown live together in a right-docked
-            // FlowLayoutPanel so they travel as a unit and hug the right edge
-            // of the pane — roughly under the Export button above — and stay
-            // there when the window is resized. The right padding keeps them a
-            // few px clear of the very edge.
             var speedGroup = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
@@ -306,25 +282,57 @@ namespace psu_archive_explorer
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Padding = new Padding(0, 4, 8, 4)
             };
-            lblSpeed.Margin = new Padding(0, 3, 0, 3); // snug inside the speed group
+            lblSpeed.Margin = new Padding(0, 3, 0, 3);
             speedGroup.Controls.Add(lblSpeed);
             speedGroup.Controls.Add(cmbSpeed);
 
-            bottomRow.Controls.Add(lblTime);
-            bottomRow.Controls.Add(speedGroup);
+            var transportButtons = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = false
+            };
+            transportButtons.Controls.Add(btnPlayPause);
+            transportButtons.Controls.Add(btnRestart);
 
-            // Add order matters for Dock=Top stacking: the LAST control added
-            // ends up on top (closest to the pane's top edge). We want, top to
-            // bottom: controlBar, then bottomRow, then the Fill preview. So add
-            // the Fill control first, then bottomRow, then controlBar last.
-            controlBar.Controls.Add(btnPlayPause);
-            controlBar.Controls.Add(btnRestart);
-            controlBar.Controls.Add(btnExport);
-            controlBar.Controls.Add(trackTime);
+            controlBar.Controls.Add(transportButtons);
+            controlBar.Controls.Add(speedGroup);   
 
-            previewPanel.Controls.Add(previewControl); // Fill — added first
-            previewPanel.Controls.Add(bottomRow);      // Dock=Top, below controlBar
-            previewPanel.Controls.Add(controlBar);     // Dock=Top, on top
+            var sliderRow = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                Padding = new Padding(8, 4, 8, 4)
+            };
+            trackTime.Dock = DockStyle.Fill;
+            lblTime.Dock = DockStyle.Right;
+            lblTime.TextAlign = ContentAlignment.MiddleLeft;
+            sliderRow.Controls.Add(trackTime);        
+            sliderRow.Controls.Add(lblTime);     
+
+            var ioRow = new GroupBox
+            {
+                Text = "Animation Import / Export",
+                Dock = DockStyle.Top,
+                Height = 64,
+                Padding = new Padding(8, 4, 8, 6)
+            };
+            var ioButtons = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                AutoSize = false
+            };
+            ioButtons.Controls.Add(btnImport);
+            ioButtons.Controls.Add(btnExport);
+            ioRow.Controls.Add(ioButtons);
+
+            previewPanel.Controls.Add(previewControl); 
+            previewPanel.Controls.Add(ioRow);    
+            previewPanel.Controls.Add(sliderRow);  
+            previewPanel.Controls.Add(controlBar); 
             previewTab.Controls.Add(previewPanel);
 
             rightTabControl.TabPages.Add(previewTab);
@@ -335,9 +343,6 @@ namespace psu_archive_explorer
 
             previewControl.LoadAnimation(internalFile, VanillaPsuSkeleton.Create());
 
-            // Nothing is selected in the tree yet, so the Data tab would
-            // otherwise be an empty white box. Show a hint explaining how to
-            // populate it instead.
             ShowDataTabPlaceholder();
         }
 
@@ -890,7 +895,7 @@ namespace psu_archive_explorer
 
                 var rbNone = new RadioButton
                 {
-                    Text = "No skeleton (flat — all bones at origin)",
+                    Text = "No skeleton (all bones at origin flat)",
                     Location = new Point(20, 134),
                     Size = new Size(380, 22),
                 };

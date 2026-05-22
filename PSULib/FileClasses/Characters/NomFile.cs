@@ -287,10 +287,15 @@ namespace PSULib.FileClasses.Characters
             return result;
         }
 
-        //This file's not editable yet, so just return the file contents.
+        /// <summary>
+        /// Serializes the NOM. If the frame data has been edited (e.g. by
+        /// NomGlbImporter), this rewrites the file via NomFileSerializer using the
+        /// originally-loaded bytes as the header template. An unedited NomFile
+        /// re-serializes byte-identically, so this is always safe to call.
+        /// </summary>
         public override byte[] ToRaw()
         {
-            return fileContents;
+            return NomFileSerializer.Serialize(this, fileContents);
         }
     }
 }

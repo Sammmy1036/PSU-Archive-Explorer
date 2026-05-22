@@ -36,7 +36,321 @@ namespace psu_archive_explorer
 
         private System.Windows.Forms.Timer searchDebounceTimer;
         private const string SearchPlaceholder = "Search files...";
+        private const string SearchPlaceholderStrings = "Search strings...";
         private bool searchBoxHasRealText = false;
+
+        // The placeholder text varies by mode. CurrentPlaceholder gives the
+        // text we should display when nothing is typed; IsPlaceholder returns
+        // true if a given string matches EITHER placeholder, so existing
+        // checks that just need "is this a placeholder?" don't have to know
+        // which mode is active.
+        private string CurrentPlaceholder
+        {
+            get { return IsStringSearchMode() ? SearchPlaceholderStrings : SearchPlaceholder; }
+        }
+
+        private static bool IsPlaceholder(string text)
+        {
+            return string.Equals(text, SearchPlaceholder, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(text, SearchPlaceholderStrings, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // String search mode state. searchModeCombo is a designer-defined
+        // ComboBox sitting to the right of the search box, hidden by default.
+        // EnableStringSearchToggleIfAvailable reveals it when the optional
+        // psu_string_index.gz file is detected next to the EXE.
+        //
+        // The "Strings" mode prompts the user before loading (the index is
+        // huge — tens of seconds — so we don't load it without consent). On
+        // confirmation, the index is loaded on a background thread with
+        // progress reported through actionProgressBar; while loading,
+        // stringIndexLoading is true and the search box is disabled. Once
+        // loaded, subsequent toggles between Files/Strings are instant.
+        private bool stringIndexLoading = false;
+        private bool stringIndexLoadAttempted = false;
+
+        private string GetStringIndexPath()
+        {
+            // Look for any of the three supported index formats next to
+            // the EXE and return the first one we find. StringIndex.cs
+            // auto-detects format from the path; we just have to point
+            // at the right thing.
+            //
+            //   1. psu_string_index.idx/  (binary OR chunked — both live
+            //      inside this folder, distinguished by what's inside it)
+            //   2. psu_string_index.gz    (single gzipped JSON file)
+            //
+            // Returns the folder path or .gz path of whichever exists,
+            // or the default folder path if none exist (so callers that
+            // pass this to IndexFolderExists still get a definite "no").
+            string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
+            string folderPath = Path.Combine(exeDir, StringIndex.IndexFolderName);
+            string gzPath = Path.Combine(exeDir, "psu_string_index.gz");
+
+            if (StringIndex.IndexFolderExists(folderPath))
+                return folderPath;
+            if (StringIndex.IndexFolderExists(gzPath))
+                return gzPath;
+            return folderPath; // fall-through; nothing exists
+        }
+
+        /// <summary>
+        /// Called once from the constructor. If psu_string_index.gz exists
+        /// next to the EXE, the search-mode combo becomes visible AND the
+        /// search box is resized to leave room for it. If the file isn't
+        /// present, the combo stays hidden and the search box keeps its full
+        /// designer width — feature is invisible and zero-cost.
+        ///
+        /// The runtime resize is needed because both controls anchor to the
+        /// right edge of the panel: leaving them at their designer sizes
+        /// causes the combo to overlap the search box. Subtracting the
+        /// combo's width plus a small gap from the searchBox at runtime is
+        /// simpler than fighting WinForms anchor layout in the designer.
+        /// </summary>
+        private void EnableStringSearchToggleIfAvailable()
+        {
+            try
+            {
+                string path = GetStringIndexPath();
+                if (StringIndex.IndexFolderExists(path))
+                {
+                    const int gap = 4;
+                    // Shrink searchBox to leave room for the combo.
+                    int newWidth = searchBox.Width - searchModeCombo.Width - gap;
+                    if (newWidth > 60) // sanity: don't collapse it
+                        searchBox.Width = newWidth;
+
+                    // Reposition the combo to sit immediately to the right of
+                    // the resized searchBox. Both are anchored Top|Right so
+                    // they stay together as the panel resizes.
+                    searchModeCombo.Left = searchBox.Right + gap;
+                    searchModeCombo.Top = searchBox.Top;
+                    searchModeCombo.Visible = true;
+                }
+                // If the folder isn't present, do nothing. String search is an
+                // optional dev-oriented feature; users who don't have the
+                // index folder shouldn't see any UI hint that it exists.
+            }
+            catch
+            {
+                // Probe failed for some reason (path resolution, permissions,
+                // etc.). String search is optional; fail silently and leave
+                // the combo hidden rather than annoy the user on every
+                // launch with an error about a feature they don't use.
+            }
+        }
+
+        private bool IsStringSearchMode()
+        {
+            return searchModeCombo.Visible && searchModeCombo.SelectedIndex == 1;
+        }
+
+        /// <summary>
+        /// Handler for the search-mode combo. Switching to Strings the first
+        /// time prompts for confirmation and kicks off a background load;
+        /// switching back to Files snaps back instantly. Switching to Strings
+        /// again after the index is already loaded is also instant.
+        /// </summary>
+        private void searchModeCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // Switching to Files mode: clear any string-search UI state.
+            if (!IsStringSearchMode())
+            {
+                searchBox.Enabled = true;
+                if (!searchBoxHasRealText)
+                {
+                    searchBox.Text = SearchPlaceholder;
+                    searchBox.ForeColor = System.Drawing.Color.Gray;
+                }
+                searchStatusLabel.Text = "";
+                // Re-run the current query under the new mode so results
+                // refresh immediately.
+                RunSearch(searchBoxHasRealText ? searchBox.Text : "");
+                return;
+            }
+
+            // Switching to Strings mode.
+            // If the index is already loaded, just refresh the results.
+            if (StringIndex.IsLoaded)
+            {
+                if (!searchBoxHasRealText)
+                {
+                    searchBox.Text = SearchPlaceholderStrings;
+                    searchBox.ForeColor = System.Drawing.Color.Gray;
+                }
+                RunSearch(searchBoxHasRealText ? searchBox.Text : "");
+                return;
+            }
+
+            // Already loading on a background thread — ignore re-entry.
+            if (stringIndexLoading)
+            {
+                return;
+            }
+
+            // First time switching to Strings. Confirm the wait.
+            var choice = MessageBox.Show(
+                "Loading the PSU string index can take a while, " +
+                "depending on your storage speed.\n\n" +
+                "Once loaded, you can search for in game text \n" +
+                "Results will show which hash file contains a match.\n\n" +
+                "Would you like to proceed?",
+                "Load String Index",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button1);
+
+            if (choice != DialogResult.Yes)
+            {
+                // User declined — snap back to Files mode.
+                searchModeCombo.SelectedIndex = 0;
+                return;
+            }
+
+            BeginLoadStringIndex();
+        }
+
+        /// <summary>
+        /// Loads the string index on a background thread, reporting progress
+        /// through actionProgressBar / progressStatusLabel. The search box
+        /// is disabled during the load so a user can't type a query into a
+        /// not-yet-ready index. On completion (success or failure) UI state
+        /// is restored on the form thread.
+        /// </summary>
+        private void BeginLoadStringIndex()
+        {
+            stringIndexLoading = true;
+            stringIndexLoadAttempted = true;
+
+            // Snapshot prior progress UI state so we can restore it cleanly
+            // afterward. The progress bar isn't currently used elsewhere in
+            // the app, but capturing the state is cheap insurance against
+            // future conflicts (e.g. if archive loading starts using it).
+            int priorProgressValue = actionProgressBar.Value;
+            string priorProgressText = progressStatusLabel.Text;
+
+            actionProgressBar.Minimum = 0;
+            actionProgressBar.Maximum = 100;
+            actionProgressBar.Value = 0;
+            progressStatusLabel.Text = "Progress: Loading string index...";
+            searchBox.Enabled = false;
+            searchModeCombo.Enabled = false;
+
+            string path = GetStringIndexPath();
+
+            // Run the load on a background thread. StringIndex.LoadFromFolder
+            // reads meta and all token shards eagerly; string shards are
+            // loaded lazily during searches. The token-shard loop is the
+            // bulk of the work and reports progress shard-by-shard.
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                bool ok = false;
+                Exception failure = null;
+                try
+                {
+                    ok = StringIndex.LoadFromFolder(path, (frac, label) =>
+                    {
+                        int pct = (int)Math.Round(frac * 100);
+                        if (pct < 0) pct = 0;
+                        if (pct > 100) pct = 100;
+                        try
+                        {
+                            this.BeginInvoke((Action)(() =>
+                            {
+                                if (!this.IsDisposed)
+                                {
+                                    actionProgressBar.Value = pct;
+                                    progressStatusLabel.Text =
+                                        $"Progress: {label} ({pct}%)";
+                                }
+                            }));
+                        }
+                        catch
+                        {
+                            // The form may be closing while a progress
+                            // callback fires; swallow rather than crash.
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    failure = ex;
+                }
+
+                try
+                {
+                    this.BeginInvoke((Action)(() =>
+                    {
+                        if (this.IsDisposed) return;
+
+                        stringIndexLoading = false;
+                        searchBox.Enabled = true;
+                        searchModeCombo.Enabled = true;
+
+                        // Restore the progress UI to its prior state. We
+                        // don't leave the bar full or empty — we leave it
+                        // exactly as we found it, so the rest of the app
+                        // can use it freely after this.
+                        actionProgressBar.Value = priorProgressValue;
+                        progressStatusLabel.Text = priorProgressText;
+
+                        if (ok)
+                        {
+                            // Re-paint the placeholder for string mode and
+                            // run any pending query.
+                            if (!searchBoxHasRealText)
+                            {
+                                searchBox.Text = SearchPlaceholderStrings;
+                                searchBox.ForeColor = System.Drawing.Color.Gray;
+                            }
+
+                            int fileCount = StringIndex.TotalFileCount;
+                            searchStatusLabel.Text =
+                                $"String index loaded ({fileCount:N0} files).";
+                            RunSearch(searchBoxHasRealText ? searchBox.Text : "");
+                        }
+                        else
+                        {
+                            // Load failed — flip back to Files mode and tell
+                            // the user. Include the full exception chain so a
+                            // diagnosis is possible: wrappers like IOException
+                            // and InvalidDataException carry the inner
+                            // underlying error which is usually the actual
+                            // cause (e.g. OutOfMemoryException, malformed
+                            // JSON token, truncated gzip stream).
+                            string msg;
+                            if (failure != null)
+                            {
+                                var sb = new System.Text.StringBuilder();
+                                sb.AppendLine("The string index could not be loaded:");
+                                sb.AppendLine();
+                                var ex = failure;
+                                int depth = 0;
+                                while (ex != null && depth < 5)
+                                {
+                                    sb.AppendLine($"[{ex.GetType().Name}] {ex.Message}");
+                                    ex = ex.InnerException;
+                                    depth++;
+                                }
+                                msg = sb.ToString();
+                            }
+                            else
+                            {
+                                msg = "The string index could not be loaded. " +
+                                      "The file may be corrupt or an unsupported version.";
+                            }
+                            MessageBox.Show(msg, "Load Failed",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            searchModeCombo.SelectedIndex = 0;
+                        }
+                    }));
+                }
+                catch
+                {
+                    // Form closed mid-load — nothing useful to do.
+                }
+            });
+        }
 
         // Case-insensitive compare to whether the box currently shows the
         // placeholder. We compare like this because the Designer-set initial
@@ -47,9 +361,7 @@ namespace psu_archive_explorer
         // truth; this is just the visual check.
         private bool ShowingPlaceholder()
         {
-            return !searchBoxHasRealText
-                && string.Equals(searchBox.Text, SearchPlaceholder,
-                                 System.StringComparison.OrdinalIgnoreCase);
+            return !searchBoxHasRealText && IsPlaceholder(searchBox.Text);
         }
 
         private void searchBox_Enter(object sender, EventArgs e)
@@ -132,7 +444,7 @@ namespace psu_archive_explorer
             {
                 searchBoxHasRealText = false;
                 searchBox.ForeColor = System.Drawing.Color.Gray;
-                searchBox.Text = SearchPlaceholder;
+                searchBox.Text = CurrentPlaceholder;
             }
         }
 
@@ -162,12 +474,11 @@ namespace psu_archive_explorer
 
         private void searchBox_TextChanged(object sender, EventArgs e)
         {
-            if (!searchBox.Focused
-                && string.Equals(searchBox.Text, SearchPlaceholder, System.StringComparison.OrdinalIgnoreCase))
+            if (!searchBox.Focused && IsPlaceholder(searchBox.Text))
                 return;
 
             searchBoxHasRealText = !string.IsNullOrEmpty(searchBox.Text)
-                                   && !string.Equals(searchBox.Text, SearchPlaceholder, System.StringComparison.OrdinalIgnoreCase);
+                                   && !IsPlaceholder(searchBox.Text);
 
             if (searchDebounceTimer == null)
             {
@@ -186,6 +497,67 @@ namespace psu_archive_explorer
 
         private void RunSearch(string query)
         {
+            // String search mode: route to the string index instead of the
+            // file index. If the user switched modes mid-typing, the
+            // displayed placeholder is "Search strings..." — strip it the
+            // same way the file path does to detect "no real query".
+            if (IsStringSearchMode())
+            {
+                if (!StringIndex.IsLoaded)
+                {
+                    // Shouldn't happen — the toggle handler gates this — but
+                    // be defensive in case the load failed silently.
+                    searchStatusLabel.Text = "String index not loaded.";
+                    searchResults.Visible = false;
+                    treeView1.Visible = !welcomeVisible;
+                    return;
+                }
+
+                if (IsPlaceholder(query) || string.IsNullOrWhiteSpace(query))
+                {
+                    searchResults.Visible = false;
+                    treeView1.Visible = !welcomeVisible;
+                    searchStatusLabel.Text = "";
+                    return;
+                }
+
+                if (searchResults.Columns.Count == 0)
+                {
+                    searchResults.Columns.Add("Filename", 140);
+                    searchResults.Columns.Add("Archive", 120);
+                }
+
+                var stringHits = StringIndex.Search(query, 5000);
+
+                searchResults.BeginUpdate();
+                searchResults.Items.Clear();
+                foreach (var hit in stringHits)
+                {
+                    // For string-search results FriendlyName holds the
+                    // preview of the matched text; show that as the primary
+                    // column with the hash as the secondary. The tooltip
+                    // shows the full inner path so the user can see exactly
+                    // which file inside the hash matched.
+                    string primary = hit.FriendlyName ?? hit.FileName;
+                    var item = new ListViewItem(primary);
+                    item.SubItems.Add(hit.Archive);
+                    item.ToolTipText = $"{hit.FileName}\n{hit.InnerPath}";
+                    item.Tag = hit;
+                    searchResults.Items.Add(item);
+                }
+                searchResults.EndUpdate();
+
+                treeView1.Visible = false;
+                searchResults.Visible = true;
+                searchResults.ShowItemToolTips = true;
+
+                searchStatusLabel.Text = stringHits.Count >= 5000
+                    ? "Showing first 5000 matches"
+                    : $"{stringHits.Count} match{(stringHits.Count == 1 ? "" : "es")}";
+                return;
+            }
+
+            // ---- File search mode (original behavior) ----
             if (!FileIndex.IsLoaded)
             {
                 searchStatusLabel.Text = "PSU File Index was not detected. Please place psu_file_index.gz next to the .exe.";
@@ -279,7 +651,7 @@ namespace psu_archive_explorer
             }
 
             searchBoxHasRealText = false;
-            searchBox.Text = SearchPlaceholder;
+            searchBox.Text = CurrentPlaceholder;
             searchBox.ForeColor = System.Drawing.Color.Gray;
             searchResults.Items.Clear();
             searchStatusLabel.Text = "";
