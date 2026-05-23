@@ -69,6 +69,17 @@ namespace psu_archive_explorer
         {
             ClearRightPanel();
 
+            // When the container search filter is active, nodes are rebuilt with
+            // a FilteredNodeTag wrapper that carries the original container index.
+            // Unwrap it here so all downstream code sees the plain FileTreeNodeTag,
+            // and capture the original index before we lose it.
+            int? filteredOriginalIndex = null;
+            if (e.Node.Tag is FilteredNodeTag fnt)
+            {
+                filteredOriginalIndex = fnt.OriginalIndex;
+                e.Node.Tag = fnt.OriginalTag;
+            }
+
             if (!(e.Node.Tag is FileTreeNodeTag tag))
                 return;
 
@@ -112,7 +123,10 @@ namespace psu_archive_explorer
             if (tag.OwnerContainer != null)
             {
                 ContainerFile parent = tag.OwnerContainer;
-                int index = e.Node.Index;
+
+                // Use the original container index captured from FilteredNodeTag
+                // when the filter is active; otherwise use the node's own Index.
+                int index = filteredOriginalIndex ?? e.Node.Index;
 
                 string fileName = tag.FileName ?? "Unknown";
 
@@ -522,20 +536,64 @@ namespace psu_archive_explorer
                 // FFmpeg encoding can take several seconds.
                 if (targetIsSfd && pickedIsVideo)
                 {
-                    byte[] originalSfdBytes;
+                    // Read the SFD bytes to use as the parameter template
+                    // (resolution, framerate, audio params).
+                    // We always read from the container's raw file so we
+                    // get the current in-memory version after any previous
+                    // replacements, but fall back to currentRight if that
+                    // produces invalid data.
+                    byte[] originalSfdBytes = null;
                     try
                     {
-                        RawFile original = owningFile.getFileRaw(node.Index);
-                        originalSfdBytes = original.WriteToBytes(false);
+                        RawFile rawEntry = owningFile.getFileRaw(node.Index);
+                        if (rawEntry != null)
+                            originalSfdBytes = rawEntry.fileContents
+                                ?? rawEntry.WriteToBytes(false);
                     }
-                    catch (Exception ex)
+                    catch { }
+
+                    // If the container read failed or returned non-SFD data,
+                    // fall back to currentRight which is synced after each import.
+                    if ((originalSfdBytes == null || originalSfdBytes.Length < 12
+                         || originalSfdBytes[0] != 0x00)
+                        && currentRight is UnpointeredFile ufTemplate
+                        && ufTemplate.theData?.Length > 12)
+                    {
+                        originalSfdBytes = ufTemplate.theData;
+                    }
+
+                    if (originalSfdBytes == null || originalSfdBytes.Length < 12)
                     {
                         MessageBox.Show(
-                            $"Could not read the original SFD entry:\n{ex.Message}",
+                            "Could not read a valid SFD from the selected entry.",
                             "Template Read Failed",
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
+
+                    // Check if the SFD template has valid audio — if the
+                    // ADX payload is missing or corrupt (can happen after
+                    // a previous import this session), warn the user.
+                    {
+                        var checkDemux = new SofdecDemuxer();
+                        checkDemux.Parse(originalSfdBytes);
+                        byte[] checkAdx = checkDemux.GetAdxPayload();
+                        bool adxValid = checkAdx.Length > 4
+                            && checkAdx[0] == 0x80 && checkAdx[1] == 0x00;
+                        if (!adxValid)
+                        {
+                            MessageBox.Show(
+                                "This SFD has already been replaced once this session.\n\n"
+                                + "Please close and re-open the vanilla hash file"
+                                + " then try again.",
+                                "SFD Conversion Notice",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                    }
+
+
+
 
                     string inputVideoPath = replaceDialog.FileName;
                     string tmpSfd = Path.ChangeExtension(Path.GetTempFileName(), ".sfd");
@@ -604,7 +662,9 @@ namespace psu_archive_explorer
                                 SetStatusTemporary("SFD conversion failed.");
                                 menuStrip1.Enabled = true;
                                 MessageBox.Show(
-                                    $"Video \u2192 SFD conversion failed:\n\n{ex.Message}",
+                                    $"Video \u2192 SFD conversion failed:\n\n{ex.Message}\n\n"
+                                    + $"Type: {ex.GetType().Name}\n"
+                                    + $"Stack: {ex.StackTrace?.Split('\n')[0]}",
                                     "SFD Conversion Failed",
                                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                             }));
@@ -824,7 +884,70 @@ namespace psu_archive_explorer
 
         private void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
-            ((TreeView)sender).SelectedNode = e.Node;
+            // Right-click is handled entirely by the context menu strip;
+            // we only need to ensure SelectedNode is set so the strip sees
+            // the right node. Multi-selection is untouched.
+            if (e.Button == MouseButtons.Right)
+            {
+                treeView1.SelectedNode = e.Node;
+            }
+        }
+
+        /// <summary>
+        /// Called by MultiSelectTreeView.WndProc on WM_LBUTTONDOWN before the
+        /// base control processes the click. Ctrl/Shift clicks are fully handled
+        /// here; the subclass suppresses the native selection change in those cases
+        /// so the tree does not clear our multi-selection highlight.
+        /// Plain clicks just clear the set so the normal single-select path works.
+        /// </summary>
+        internal void OnMultiSelectMouseDown(TreeNode node, bool ctrl, bool shift)
+        {
+            if (!ctrl && !shift)
+            {
+                // Plain click: clear the extra selection set and let the tree
+                // do its normal single-node selection.
+                _multiSelectedNodes.Clear();
+                _multiSelectAnchor = node;
+            }
+            else if (ctrl)
+            {
+                // Ctrl+Click: toggle this node in the set.
+                if (_multiSelectedNodes.Contains(node))
+                    _multiSelectedNodes.Remove(node);
+                else
+                    _multiSelectedNodes.Add(node);
+
+                _multiSelectAnchor = node;
+                // Move the primary selection to the clicked node so currentRight stays in sync.
+                treeView1.SelectedNode = node;
+            }
+            else // Shift
+            {
+                // Shift+Click: select a contiguous range of siblings from the anchor.
+                if (_multiSelectAnchor == null ||
+                    _multiSelectAnchor.Parent != node.Parent)
+                {
+                    _multiSelectedNodes.Clear();
+                    _multiSelectAnchor = node;
+                }
+                else
+                {
+                    TreeNodeCollection siblings = node.Parent != null
+                        ? node.Parent.Nodes
+                        : treeView1.Nodes;
+
+                    int lo = Math.Min(_multiSelectAnchor.Index, node.Index);
+                    int hi = Math.Max(_multiSelectAnchor.Index, node.Index);
+
+                    _multiSelectedNodes.Clear();
+                    for (int i = lo; i <= hi; i++)
+                        _multiSelectedNodes.Add(siblings[i]);
+                }
+
+                treeView1.SelectedNode = node;
+            }
+
+            treeView1.Invalidate();
         }
 
         private void disableScriptParsingToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1314,6 +1437,8 @@ namespace psu_archive_explorer
                 {
                     this.Text = previousTitle;
                     treeView1.Nodes.Clear();
+                    _multiSelectedNodes.Clear();
+                    _multiSelectAnchor = null;
                     ClearRightPanel();
                     ShowWelcomeScreen();
                 }
@@ -1334,6 +1459,11 @@ namespace psu_archive_explorer
                     this.Text = previousTitle;
                 }
             }
+
+            // Reset any active container search from the previous archive so
+            // stale results don't carry over, then update the combo visibility.
+            ResetContainerSearchIfActive();
+            UpdateContainerModeVisibility(loadedContainer != null || treeView1.Nodes.Count > 0);
         }
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1387,6 +1517,8 @@ namespace psu_archive_explorer
                         ((ContainerFile)loadedContainer.getFileParsed(0)).addFile(treeView1.SelectedNode.Index, new RawFile(inStream, Path.GetFileName(fileDialog.FileName)));
                     }
                     treeView1.Nodes.Clear();
+                    _multiSelectedNodes.Clear();
+                    _multiSelectAnchor = null;
                     addChildFiles(treeView1.Nodes, loadedContainer);
                 }
             }
@@ -2065,6 +2197,156 @@ namespace psu_archive_explorer
 
             infoPanel.Controls.Add(layout);
             splitContainer1.Panel2.Controls.Add(infoPanel);
+        }
+
+        // ----------------------------------------------------------------
+        // Multi-select TreeView initialisation
+        // ----------------------------------------------------------------
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            InitMultiSelectTree();
+        }
+
+        /// <summary>
+        /// Called once from the form's Load event (wire up in the designer or
+        /// constructor: this.Load += MainForm_Load).
+        /// Swaps the designer-created treeView1 for a MultiSelectTreeView so
+        /// that Ctrl/Shift clicks are intercepted at the WndProc level before
+        /// the native control clears the selection highlight.
+        /// </summary>
+        private void InitMultiSelectTree()
+        {
+            var msTree = new MultiSelectTreeView(this);
+
+            // Copy every property the designer sets on treeView1.
+            msTree.Name = treeView1.Name;
+            msTree.Dock = treeView1.Dock;
+            msTree.Location = treeView1.Location;
+            msTree.Size = treeView1.Size;
+            msTree.TabIndex = treeView1.TabIndex;
+            msTree.Font = treeView1.Font;
+            msTree.ImageList = treeView1.ImageList;
+            msTree.LabelEdit = treeView1.LabelEdit;
+            msTree.HideSelection = false;   // keep highlight when focus moves
+            msTree.FullRowSelect = treeView1.FullRowSelect;
+            msTree.ShowLines = treeView1.ShowLines;
+            msTree.ShowPlusMinus = treeView1.ShowPlusMinus;
+            msTree.ShowRootLines = treeView1.ShowRootLines;
+            msTree.Scrollable = treeView1.Scrollable;
+            msTree.ContextMenuStrip = treeView1.ContextMenuStrip;
+
+            // Re-wire all events from the old tree to the new one.
+            msTree.AfterSelect += treeView1_AfterSelect;
+            msTree.NodeMouseClick += treeView1_NodeMouseClick;
+            msTree.BeforeLabelEdit += treeView1_BeforeLabelEdit;
+            msTree.AfterLabelEdit += treeView1_AfterLabelEdit;
+
+            // Replace in the parent container.
+            var parent = treeView1.Parent;
+            int idx = parent.Controls.GetChildIndex(treeView1);
+            parent.Controls.Remove(treeView1);
+            treeView1.Dispose();
+            treeView1 = msTree;
+            parent.Controls.Add(msTree);
+            parent.Controls.SetChildIndex(msTree, idx);
+        }
+    }
+
+    // ====================================================================
+    // MultiSelectTreeView — subclass that intercepts WM_LBUTTONDOWN so
+    // Ctrl/Shift clicks can update _multiSelectedNodes before the native
+    // TreeView control changes the single selection.
+    // ====================================================================
+
+    /// <summary>
+    /// A TreeView subclass that paints extra highlighted nodes for multi-
+    /// selection and intercepts left-button-down messages so Ctrl/Shift
+    /// modifiers are acted on before the base control clears the selection.
+    /// </summary>
+    internal sealed class MultiSelectTreeView : TreeView
+    {
+        private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_LBUTTONDBLCLK = 0x0203;
+        private const int TVM_SELECTITEM = 0x110B;
+        private const int TVGN_CARET = 0x0009;
+
+        private readonly MainForm _owner;
+        private bool _suppressSelect = false;
+
+        internal MultiSelectTreeView(MainForm owner)
+        {
+            _owner = owner;
+            DrawMode = TreeViewDrawMode.OwnerDrawText;
+            HideSelection = false;
+            DrawNode += OnDrawNode;
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_LBUTTONDOWN || m.Msg == WM_LBUTTONDBLCLK)
+            {
+                bool ctrl = (Control.ModifierKeys & Keys.Control) != 0;
+                bool shift = (Control.ModifierKeys & Keys.Shift) != 0;
+
+                if (ctrl || shift)
+                {
+                    // Hit-test to find which node was clicked.
+                    int x = m.LParam.ToInt32() & 0xFFFF;
+                    int y = (m.LParam.ToInt32() >> 16) & 0xFFFF;
+                    TreeViewHitTestInfo hit = HitTest(x, y);
+
+                    if (hit?.Node != null)
+                    {
+                        // Tell the form to update _multiSelectedNodes first.
+                        _owner.OnMultiSelectMouseDown(hit.Node, ctrl, shift);
+                        // Suppress the native WM_LBUTTONDOWN so the tree does
+                        // not call TVM_SELECTITEM and clear our highlight.
+                        return;
+                    }
+                }
+                else
+                {
+                    // Plain click — clear the multi-set, then let the tree handle it.
+                    int x = m.LParam.ToInt32() & 0xFFFF;
+                    int y = (m.LParam.ToInt32() >> 16) & 0xFFFF;
+                    TreeViewHitTestInfo hit = HitTest(x, y);
+                    if (hit?.Node != null)
+                        _owner.OnMultiSelectMouseDown(hit.Node, false, false);
+                }
+            }
+
+            base.WndProc(ref m);
+        }
+
+        private void OnDrawNode(object sender, DrawTreeNodeEventArgs e)
+        {
+            bool isExtraSelected =
+                _owner._multiSelectedNodes.Count > 1 &&
+                _owner._multiSelectedNodes.Contains(e.Node) &&
+                e.Node != SelectedNode;
+
+            if (isExtraSelected)
+            {
+                // Fill the row with the system highlight colour so extra-selected
+                // nodes look identical to the primary selection.
+                using (var brush = new SolidBrush(SystemColors.Highlight))
+                    e.Graphics.FillRectangle(brush, e.Bounds);
+
+                TextRenderer.DrawText(
+                    e.Graphics,
+                    e.Node.Text,
+                    Font,
+                    e.Bounds,
+                    SystemColors.HighlightText,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter |
+                    TextFormatFlags.SingleLine);
+            }
+            else
+            {
+                e.DrawDefault = true;
+            }
         }
     }
 }

@@ -388,6 +388,15 @@ namespace psu_archive_explorer
 
         private void exportSelectedToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            // If the user has Ctrl/Shift-selected more than one node, batch-export
+            // them all into a chosen folder instead of the normal single-file dialog.
+            if (_multiSelectedNodes.Count > 1)
+            {
+                exportMultipleSelected(_multiSelectedNodes.ToList());
+                return;
+            }
+
+            // ---- Single-file path (original logic) ----
             // There are two valid states for Export Selected:
             //   1. An archive is loaded AND a file inside it is selected
             //      (currentRight is set by tree-selection logic).
@@ -438,12 +447,202 @@ namespace psu_archive_explorer
 
         private void extractFileTreeContextItem_Click(object sender, EventArgs e)
         {
+            // Route to batch export when multiple nodes are selected.
+            if (_multiSelectedNodes.Count > 1)
+            {
+                exportMultipleSelected(_multiSelectedNodes.ToList());
+                return;
+            }
             exportSelected();
+        }
+
+        /// <summary>
+        /// Exports every node in <paramref name="nodes"/> that is a concrete file
+        /// (not a container/chunk header) into a single user-chosen folder.
+        /// Respects the existing ADX→WAV and DAT→WAV batch-export settings.
+        /// Container/chunk nodes are silently skipped. Name collisions within
+        /// the destination folder are resolved with _1, _2, … suffixes.
+        /// </summary>
+        private void exportMultipleSelected(List<TreeNode> nodes)
+        {
+            if (nodes == null || nodes.Count == 0) return;
+
+            // Ask for a destination folder.
+            CommonOpenFileDialog folderDialog = new CommonOpenFileDialog();
+            folderDialog.IsFolderPicker = true;
+            folderDialog.Title = $"Choose destination folder for {nodes.Count} selected file(s)";
+            if (folderDialog.ShowDialog() != CommonFileDialogResult.Ok)
+                return;
+
+            string destFolder = folderDialog.FileName;
+            try { Directory.CreateDirectory(destFolder); }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not create destination folder:\n{ex.Message}",
+                    "Export Selected", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            int written = 0;
+            int skipped = 0;
+            var errors = new List<string>();
+            // Track names we've already written to avoid clobbering two entries
+            // that share the same display name (e.g. duplicate filenames in an NBL).
+            var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (TreeNode node in nodes)
+            {
+                if (!(node.Tag is FileTreeNodeTag tag)) { skipped++; continue; }
+
+                // ---- Standalone file on disk (hashed ADX / DAT / SFD) ----
+                if (tag.OwnerContainer == null)
+                {
+                    if (string.IsNullOrEmpty(tag.FullPath) || !File.Exists(tag.FullPath))
+                    { skipped++; continue; }
+
+                    string destName = UniqueNameInSet(
+                        tag.FileName ?? Path.GetFileName(tag.FullPath), usedNames);
+                    string destPath = Path.Combine(destFolder, destName);
+                    try
+                    {
+                        File.Copy(tag.FullPath, destPath, overwrite: true);
+                        written++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"{tag.FileName}: {ex.Message}");
+                    }
+                    continue;
+                }
+
+                // ---- File inside a loaded container ----
+                ContainerFile parent = tag.OwnerContainer;
+                int index = node.Index;
+
+                // Skip container/chunk nodes (NBL, NMLL, TMLL) — they have no
+                // standalone raw bytes to write.
+                PsuFile parsed;
+                try { parsed = parent.getFileParsed(index); }
+                catch { skipped++; continue; }
+
+                if (parsed is ContainerFile) { skipped++; continue; }
+
+                string baseName = tag.FileName ?? node.Text ?? $"file_{index}";
+                bool isAdx = baseName.EndsWith(".adx", StringComparison.OrdinalIgnoreCase);
+                bool isDat = baseName.EndsWith(".dat", StringComparison.OrdinalIgnoreCase);
+
+                try
+                {
+                    // ADX → WAV (when the batch-convert setting is on).
+                    if (isAdx && batchWavExport && parsed is UnpointeredFile adxFile)
+                    {
+                        try
+                        {
+                            byte[] wav = AdxDecoder.DecodeToWav(adxFile.theData);
+                            string wavName = UniqueNameInSet(
+                                Path.ChangeExtension(baseName, ".wav"), usedNames);
+                            File.WriteAllBytes(Path.Combine(destFolder, wavName), wav);
+                            written++;
+                            continue;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(
+                                $"ADX->WAV failed for {baseName}: {ex.Message}. " +
+                                "Falling back to raw .adx.");
+                            // Fall through to raw export below.
+                        }
+                    }
+
+                    // DAT → WAV (when the batch-convert setting is on).
+                    if (isDat && batchDat2WavExport
+                        && parsed is UnpointeredFile datFile
+                        && DatConverter.IsSoundDat(datFile.theData))
+                    {
+                        try
+                        {
+                            byte[] wav = DatConverter.DecodeToWav(datFile.theData);
+                            string wavName = UniqueNameInSet(
+                                Path.ChangeExtension(baseName, ".wav"), usedNames);
+                            File.WriteAllBytes(Path.Combine(destFolder, wavName), wav);
+                            written++;
+                            continue;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(
+                                $"DAT->WAV failed for {baseName}: {ex.Message}. " +
+                                "Falling back to raw .dat.");
+                            // Fall through to raw export below.
+                        }
+                    }
+
+                    // Generic raw export.
+                    RawFile raw = parent.getFileRaw(index);
+                    byte[] bytes = raw.WriteToBytes(exportMetaData);
+                    string uniqueName = UniqueNameInSet(baseName, usedNames);
+                    File.WriteAllBytes(Path.Combine(destFolder, uniqueName), bytes);
+                    written++;
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"{baseName}: {ex.Message}");
+                }
+            }
+
+            // ---- Summary dialog ----
+            var sb = new StringBuilder();
+            if (written > 0)
+                sb.Append($"Exported {written} file(s) to:\n\n{destFolder}");
+            else
+                sb.Append("No files were exported.");
+
+            if (skipped > 0)
+                sb.Append($"\n\n{skipped} node(s) were skipped " +
+                          "(container/chunk nodes have no standalone export).");
+
+            if (errors.Count > 0)
+            {
+                sb.Append($"\n\n{errors.Count} error(s):\n  ");
+                sb.Append(string.Join("\n  ", errors.Take(5)));
+                if (errors.Count > 5)
+                    sb.Append($"\n  ... ({errors.Count - 5} more)");
+            }
+
+            MessageBox.Show(sb.ToString(),
+                "Export Selected",
+                MessageBoxButtons.OK,
+                errors.Count > 0 || written == 0
+                    ? MessageBoxIcon.Warning
+                    : MessageBoxIcon.Information);
+        }
+
+        /// <summary>
+        /// Returns <paramref name="baseName"/> if it has not yet been added to
+        /// <paramref name="used"/> (adding it and returning it), otherwise appends
+        /// _1, _2, … until a unique name is found.
+        /// </summary>
+        private static string UniqueNameInSet(string baseName, HashSet<string> used)
+        {
+            if (used.Add(baseName)) return baseName;
+
+            string nameNoExt = Path.GetFileNameWithoutExtension(baseName);
+            string ext = Path.GetExtension(baseName);
+            int suffix = 1;
+            string candidate;
+            do { candidate = $"{nameNoExt}_{suffix++}{ext}"; }
+            while (!used.Add(candidate));
+            return candidate;
         }
 
         // Tracks the in-progress "Export All" run (if any) so the user can
         // cancel by re-clicking, and so we can prevent two runs at once.
         private CancellationTokenSource exportAllCts;
+
+        // Tracks the nodes the user has Ctrl/Shift-clicked in addition to the
+        // single SelectedNode. Used by "Export Selected" to batch-export.
+        internal readonly HashSet<TreeNode> _multiSelectedNodes = new HashSet<TreeNode>();
+        internal TreeNode _multiSelectAnchor = null;
 
         private async void exportAllToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -1412,7 +1611,7 @@ namespace psu_archive_explorer
                 progressStatusLabel.Invoke((Action)(() =>
                 {
                     if (progressStatusLabel.Text == snapshot)
-                        progressStatusLabel.Text = string.Empty;
+                        progressStatusLabel.Text = "Progress: ";
                 }));
             }, TaskScheduler.Default);
         }

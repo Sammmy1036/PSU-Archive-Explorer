@@ -13,6 +13,15 @@ namespace psu_archive_explorer
         [STAThread]
         static void Main()
         {
+            try
+            {
+                NativeLoader.EnsureLoaded();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "NativeLoader Failed");
+            }
+            // Remove the ListManifestResources line now
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());

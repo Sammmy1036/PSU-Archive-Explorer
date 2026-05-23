@@ -37,22 +37,28 @@ namespace psu_archive_explorer
         private System.Windows.Forms.Timer searchDebounceTimer;
         private const string SearchPlaceholder = "Search files...";
         private const string SearchPlaceholderStrings = "Search strings...";
+        private const string SearchPlaceholderContainer = "Search container...";
         private bool searchBoxHasRealText = false;
 
         // The placeholder text varies by mode. CurrentPlaceholder gives the
         // text we should display when nothing is typed; IsPlaceholder returns
-        // true if a given string matches EITHER placeholder, so existing
-        // checks that just need "is this a placeholder?" don't have to know
-        // which mode is active.
+        // true if a given string matches ANY placeholder so existing checks
+        // don't have to know which mode is active.
         private string CurrentPlaceholder
         {
-            get { return IsStringSearchMode() ? SearchPlaceholderStrings : SearchPlaceholder; }
+            get
+            {
+                if (IsContainerSearchMode()) return SearchPlaceholderContainer;
+                if (IsStringSearchMode()) return SearchPlaceholderStrings;
+                return SearchPlaceholder;
+            }
         }
 
         private static bool IsPlaceholder(string text)
         {
             return string.Equals(text, SearchPlaceholder, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(text, SearchPlaceholderStrings, StringComparison.OrdinalIgnoreCase);
+                || string.Equals(text, SearchPlaceholderStrings, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(text, SearchPlaceholderContainer, StringComparison.OrdinalIgnoreCase);
         }
 
         // String search mode state. searchModeCombo is a designer-defined
@@ -95,54 +101,127 @@ namespace psu_archive_explorer
         }
 
         /// <summary>
-        /// Called once from the constructor. If psu_string_index.gz exists
-        /// next to the EXE, the search-mode combo becomes visible AND the
-        /// search box is resized to leave room for it. If the file isn't
-        /// present, the combo stays hidden and the search box keeps its full
-        /// designer width — feature is invisible and zero-cost.
+        /// Called once from the constructor. Prepares the search-mode combo
+        /// without touching the search box width — the resize only happens the
+        /// first time the combo actually becomes visible (see ShowComboForFirstTime).
+        /// The "Container" item is added/removed dynamically via
+        /// UpdateContainerModeVisibility() as archives are opened and closed.
         ///
-        /// The runtime resize is needed because both controls anchor to the
-        /// right edge of the panel: leaving them at their designer sizes
-        /// causes the combo to overlap the search box. Subtracting the
-        /// combo's width plus a small gap from the searchBox at runtime is
-        /// simpler than fighting WinForms anchor layout in the designer.
+        /// Combo item layout at runtime:
+        ///   0 = Files
+        ///   1 = Container  (only present while a container is loaded)
+        ///   1 or 2 = Strings (only present when psu_string_index.gz exists)
         /// </summary>
         private void EnableStringSearchToggleIfAvailable()
         {
             try
             {
+                // Start with only "Files" in the list; Container and Strings
+                // are added conditionally below or via UpdateContainerModeVisibility.
+                while (searchModeCombo.Items.Count > 1)
+                    searchModeCombo.Items.RemoveAt(searchModeCombo.Items.Count - 1);
+
+                // Add "Strings" if the index file is present.
                 string path = GetStringIndexPath();
                 if (StringIndex.IndexFolderExists(path))
-                {
-                    const int gap = 4;
-                    // Shrink searchBox to leave room for the combo.
-                    int newWidth = searchBox.Width - searchModeCombo.Width - gap;
-                    if (newWidth > 60) // sanity: don't collapse it
-                        searchBox.Width = newWidth;
+                    searchModeCombo.Items.Add("Strings");
 
-                    // Reposition the combo to sit immediately to the right of
-                    // the resized searchBox. Both are anchored Top|Right so
-                    // they stay together as the panel resizes.
-                    searchModeCombo.Left = searchBox.Right + gap;
-                    searchModeCombo.Top = searchBox.Top;
-                    searchModeCombo.Visible = true;
-                }
-                // If the folder isn't present, do nothing. String search is an
-                // optional dev-oriented feature; users who don't have the
-                // index folder shouldn't see any UI hint that it exists.
+                // Show the combo and resize the search box only when there is
+                // more than one choice (i.e. the string index is present).
+                // If not, the combo stays hidden and the search box keeps its
+                // full designer width. Container mode will call
+                // ShowComboForFirstTime when an archive is first opened.
+                if (searchModeCombo.Items.Count > 1)
+                    ShowComboForFirstTime();
             }
             catch
             {
-                // Probe failed for some reason (path resolution, permissions,
-                // etc.). String search is optional; fail silently and leave
-                // the combo hidden rather than annoy the user on every
-                // launch with an error about a feature they don't use.
+                // Probe failed — fail silently.
             }
+        }
+
+        // Tracks whether the search box has already been shrunk to make room
+        // for the combo. We only want to do that once, not on every open.
+        private bool _comboShownOnce = false;
+
+        /// <summary>
+        /// Shrinks the search box, positions the combo beside it, and makes
+        /// the combo visible. Safe to call multiple times — only acts on the
+        /// first call.
+        /// </summary>
+        private void ShowComboForFirstTime()
+        {
+            if (_comboShownOnce) return;
+            _comboShownOnce = true;
+
+            const int gap = 4;
+            int newWidth = searchBox.Width - searchModeCombo.Width - gap;
+            if (newWidth > 60)
+                searchBox.Width = newWidth;
+
+            searchModeCombo.Left = searchBox.Right + gap;
+            searchModeCombo.Top = searchBox.Top;
+            searchModeCombo.Visible = true;
+        }
+
+        /// <summary>
+        /// Adds or removes the "Container" item from the search-mode combo
+        /// based on whether a container is currently loaded. Call this after
+        /// every successful archive open and after every archive close.
+        ///
+        /// When a container is loaded the combo always becomes visible (and the
+        /// search box is resized to make room on the very first show).
+        /// When it is closed the combo is hidden again if the string index is
+        /// also absent (i.e. there would be nothing but "Files" to choose from).
+        /// If Container mode is active while the container closes, the mode
+        /// is reset to Files automatically.
+        /// </summary>
+        internal void UpdateContainerModeVisibility(bool containerLoaded)
+        {
+            bool hasStrings = searchModeCombo.Items.Contains("Strings");
+            bool hasContainer = searchModeCombo.Items.Contains("Container");
+
+            if (containerLoaded && !hasContainer)
+            {
+                // Insert "Container" at index 1 (after "Files").
+                searchModeCombo.Items.Insert(1, "Container");
+                ShowComboForFirstTime();   // resize + show (no-op after first time)
+                searchModeCombo.Visible = true;
+            }
+            else if (!containerLoaded && hasContainer)
+            {
+                // If Container mode is currently selected, switch to Files first.
+                if (IsContainerSearchMode())
+                {
+                    RestoreAllTreeNodes();
+                    searchModeCombo.SelectedIndex = 0;
+                }
+
+                searchModeCombo.Items.Remove("Container");
+
+                // Hide the combo if there's only "Files" left.
+                searchModeCombo.Visible = hasStrings;
+            }
+        }
+
+        private bool IsContainerSearchMode()
+        {
+            // "Container" is at index 1 when present.
+            return searchModeCombo.Visible
+                && searchModeCombo.SelectedIndex == 1
+                && searchModeCombo.Items.Count > 1
+                && searchModeCombo.Items[1] as string == "Container";
         }
 
         private bool IsStringSearchMode()
         {
-            return searchModeCombo.Visible && searchModeCombo.SelectedIndex == 1;
+            // "Strings" is the last item when present; its index depends on
+            // whether "Container" is also in the list.
+            if (!searchModeCombo.Visible) return false;
+            int idx = searchModeCombo.SelectedIndex;
+            return idx >= 1
+                && idx < searchModeCombo.Items.Count
+                && searchModeCombo.Items[idx] as string == "Strings";
         }
 
         /// <summary>
@@ -153,9 +232,11 @@ namespace psu_archive_explorer
         /// </summary>
         private void searchModeCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // Switching to Files mode: clear any string-search UI state.
-            if (!IsStringSearchMode())
+            // ---- Files mode (index 0) ----
+            if (searchModeCombo.SelectedIndex == 0)
             {
+                // Restore the tree fully in case container filter is active.
+                RestoreAllTreeNodes();
                 searchBox.Enabled = true;
                 if (!searchBoxHasRealText)
                 {
@@ -163,14 +244,34 @@ namespace psu_archive_explorer
                     searchBox.ForeColor = System.Drawing.Color.Gray;
                 }
                 searchStatusLabel.Text = "";
-                // Re-run the current query under the new mode so results
-                // refresh immediately.
                 RunSearch(searchBoxHasRealText ? searchBox.Text : "");
                 return;
             }
 
-            // Switching to Strings mode.
-            // If the index is already loaded, just refresh the results.
+            // ---- Container mode (index 1) ----
+            if (IsContainerSearchMode())
+            {
+                // Hide the ListView results panel — container mode works
+                // entirely through the tree's own node visibility.
+                searchResults.Visible = false;
+                treeView1.Visible = !welcomeVisible;
+                searchBox.Enabled = true;
+                if (!searchBoxHasRealText)
+                {
+                    searchBox.Text = SearchPlaceholderContainer;
+                    searchBox.ForeColor = System.Drawing.Color.Gray;
+                }
+                searchStatusLabel.Text = "";
+                // Apply the current query immediately so switching modes
+                // while text is already typed reacts at once.
+                RunSearch(searchBoxHasRealText ? searchBox.Text : "");
+                return;
+            }
+
+            // ---- Strings mode (index 2) ----
+            // Restore the tree in case container filter was active.
+            RestoreAllTreeNodes();
+
             if (StringIndex.IsLoaded)
             {
                 if (!searchBoxHasRealText)
@@ -182,13 +283,9 @@ namespace psu_archive_explorer
                 return;
             }
 
-            // Already loading on a background thread — ignore re-entry.
             if (stringIndexLoading)
-            {
                 return;
-            }
 
-            // First time switching to Strings. Confirm the wait.
             var choice = MessageBox.Show(
                 "Loading the PSU string index can take a while, " +
                 "depending on your storage speed.\n\n" +
@@ -202,7 +299,6 @@ namespace psu_archive_explorer
 
             if (choice != DialogResult.Yes)
             {
-                // User declined — snap back to Files mode.
                 searchModeCombo.SelectedIndex = 0;
                 return;
             }
@@ -497,6 +593,36 @@ namespace psu_archive_explorer
 
         private void RunSearch(string query)
         {
+            // ---- Container search mode ----
+            // Filters the treeView1 nodes in-place by hiding any node whose
+            // display name doesn't contain the query. No separate results panel;
+            // the tree itself shows only matching entries while typing.
+            if (IsContainerSearchMode())
+            {
+                if (loadedContainer == null || welcomeVisible)
+                {
+                    searchStatusLabel.Text = loadedContainer == null
+                        ? "Open a container first to use Container search."
+                        : "";
+                    return;
+                }
+
+                // Empty / placeholder query: restore everything and clear status.
+                if (IsPlaceholder(query) || string.IsNullOrWhiteSpace(query))
+                {
+                    RestoreAllTreeNodes();
+                    searchStatusLabel.Text = "";
+                    return;
+                }
+
+                // Apply the filter and count how many leaf nodes are visible.
+                int matchCount = FilterTreeNodes(query);
+                searchStatusLabel.Text = matchCount == 0
+                    ? "No matches."
+                    : $"{matchCount} match{(matchCount == 1 ? "" : "es")}";
+                return;
+            }
+
             // String search mode: route to the string index instead of the
             // file index. If the user switched modes mid-typing, the
             // displayed placeholder is "Search strings..." — strip it the
@@ -674,6 +800,9 @@ namespace psu_archive_explorer
                        System.Reflection.Assembly.GetExecutingAssembly().GetName().Version +
                        " — " + hit.Archive;
             }
+
+            ResetContainerSearchIfActive();
+            UpdateContainerModeVisibility(loadedContainer != null || treeView1.Nodes.Count > 0);
         }
         private bool PromptForGameDirectory()
         {
@@ -851,6 +980,246 @@ namespace psu_archive_explorer
             {
                 this.ActiveControl = null;
             }
+        }
+
+        // ====================== Container Search Helpers ======================
+        //
+        // WinForms TreeView has no per-node Visible property. Approach:
+        //
+        //   1. On the first filter keystroke, snapshot the ENTIRE tree into
+        //      _containerSnapshot — a plain data structure mirroring every
+        //      node's text, tag, colours, and children. The live tree is then
+        //      cleared once with Nodes.Clear().
+        //
+        //   2. On every subsequent keystroke we call Nodes.Clear() once and
+        //      rebuild only the matching nodes from the snapshot. No restore-
+        //      then-remove cycle; the tree is written from scratch each time.
+        //
+        //   3. When the query is cleared or the mode changes, the full tree is
+        //      rebuilt from the snapshot, then the snapshot is discarded.
+        //
+        // This is O(n) per keystroke regardless of query changes and avoids
+        // the freeze caused by repeatedly re-inserting thousands of nodes.
+
+        private class SnapshotNode
+        {
+            public string Text;
+            public object Tag;
+            public System.Drawing.Color ForeColor;
+            public System.Drawing.Color BackColor;
+            public System.Windows.Forms.ContextMenuStrip ContextMenuStrip;
+            public int OriginalIndex;   // node's Index in the original unfiltered tree
+            public List<SnapshotNode> Children = new List<SnapshotNode>();
+        }
+
+        // Non-null while a filter is active; null when the full tree is shown.
+        private List<SnapshotNode> _containerSnapshot = null;
+
+        /// <summary>
+        /// Wraps a node's original Tag together with its original unfiltered
+        /// index. Used only while a container filter is active so that
+        /// treeView1_AfterSelect can use the correct container index even
+        /// though the node's position in the filtered tree is different.
+        /// </summary>
+        private class FilteredNodeTag
+        {
+            public object OriginalTag;
+            public int OriginalIndex;
+        }
+
+        /// <summary>
+        /// Snapshots the tree the first time it is called, then rebuilds the
+        /// visible tree from that snapshot to show only nodes whose text
+        /// contains <paramref name="query"/> (case-insensitive). Returns the
+        /// number of matching leaf nodes.
+        /// </summary>
+        private int FilterTreeNodes(string query)
+        {
+            if (_containerSnapshot == null)
+                _containerSnapshot = TakeSnapshot(treeView1.Nodes);
+
+            treeView1.BeginUpdate();
+            treeView1.Nodes.Clear();
+            int matchCount = RebuildFiltered(treeView1.Nodes, _containerSnapshot, query);
+            treeView1.EndUpdate();
+            return matchCount;
+        }
+
+        /// <summary>Recursively captures a NodeCollection into a snapshot list.</summary>
+        private static List<SnapshotNode> TakeSnapshot(TreeNodeCollection nodes)
+        {
+            var list = new List<SnapshotNode>(nodes.Count);
+            foreach (TreeNode n in nodes)
+            {
+                var sn = new SnapshotNode
+                {
+                    Text = n.Text,
+                    Tag = n.Tag,
+                    ForeColor = n.ForeColor,
+                    BackColor = n.BackColor,
+                    ContextMenuStrip = n.ContextMenuStrip,
+                    OriginalIndex = n.Index,
+                };
+                if (n.Nodes.Count > 0)
+                    sn.Children = TakeSnapshot(n.Nodes);
+                list.Add(sn);
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Adds TreeNodes to <paramref name="target"/> for every snapshot entry
+        /// that matches <paramref name="query"/> or has a matching descendant.
+        /// Parent nodes that survive only because of children are expanded.
+        /// When a node itself matches by name, ALL of its children are restored
+        /// (not just the ones that also match) so the + expander remains usable.
+        /// Returns the count of matching leaf nodes added.
+        /// </summary>
+        private static int RebuildFiltered(TreeNodeCollection target,
+                                            List<SnapshotNode> snapshot,
+                                            string query)
+        {
+            int matchCount = 0;
+            foreach (var sn in snapshot)
+            {
+                bool nameMatches = sn.Text.IndexOf(
+                    query, StringComparison.OrdinalIgnoreCase) >= 0;
+
+                // Check children for query matches.
+                int childMatches = 0;
+                var survivingChildren = new List<SnapshotNode>();
+                if (sn.Children.Count > 0)
+                    GatherMatches(sn.Children, query, survivingChildren, ref childMatches);
+
+                if (!nameMatches && childMatches == 0)
+                    continue;
+
+                // Wrap the original Tag with the original container index so
+                // treeView1_AfterSelect can find the right file even though
+                // this node's Index in the filtered tree is different.
+                var live = new TreeNode(sn.Text)
+                {
+                    Tag = new FilteredNodeTag { OriginalTag = sn.Tag, OriginalIndex = sn.OriginalIndex },
+                    ForeColor = sn.ForeColor,
+                    BackColor = sn.BackColor,
+                    ContextMenuStrip = sn.ContextMenuStrip,
+                };
+                target.Add(live);
+
+                if (sn.Children.Count > 0)
+                {
+                    if (nameMatches)
+                    {
+                        // This node matched by name — restore ALL its children
+                        // so the user can still expand it and browse inside.
+                        RestoreFromSnapshot(live.Nodes, sn.Children);
+                        // Don't auto-expand; the user can open it themselves.
+                    }
+                    else if (survivingChildren.Count > 0)
+                    {
+                        // This node survived only because children matched —
+                        // recurse with the filter still active and auto-expand
+                        // so the matches are immediately visible.
+                        RebuildFiltered(live.Nodes, survivingChildren, query);
+                        live.Expand();
+                    }
+                }
+
+                matchCount += nameMatches && sn.Children.Count == 0 ? 1 : childMatches;
+            }
+            return matchCount;
+        }
+
+        /// <summary>
+        /// Populates <paramref name="survivors"/> with snapshot entries that
+        /// themselves match or have a matching descendant, and accumulates the
+        /// leaf match count into <paramref name="matchCount"/>.
+        /// </summary>
+        private static void GatherMatches(List<SnapshotNode> snapshot,
+                                           string query,
+                                           List<SnapshotNode> survivors,
+                                           ref int matchCount)
+        {
+            foreach (var sn in snapshot)
+            {
+                bool nameMatches = sn.Text.IndexOf(
+                    query, StringComparison.OrdinalIgnoreCase) >= 0;
+
+                int childMatches = 0;
+                var childSurvivors = new List<SnapshotNode>();
+                if (sn.Children.Count > 0)
+                    GatherMatches(sn.Children, query, childSurvivors, ref childMatches);
+
+                if (nameMatches || childMatches > 0)
+                {
+                    survivors.Add(sn);
+                    matchCount += nameMatches && sn.Children.Count == 0 ? 1 : childMatches;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds the full tree from the snapshot and discards it.
+        /// Call when the query is cleared or the mode changes.
+        /// </summary>
+        private void RestoreAllTreeNodes()
+        {
+            if (_containerSnapshot == null) return;
+
+            treeView1.BeginUpdate();
+            treeView1.Nodes.Clear();
+            RestoreFromSnapshot(treeView1.Nodes, _containerSnapshot);
+            treeView1.EndUpdate();
+
+            _containerSnapshot = null;
+        }
+
+        private static void RestoreFromSnapshot(TreeNodeCollection target,
+                                                 List<SnapshotNode> snapshot)
+        {
+            foreach (var sn in snapshot)
+            {
+                var live = new TreeNode(sn.Text)
+                {
+                    Tag = sn.Tag,
+                    ForeColor = sn.ForeColor,
+                    BackColor = sn.BackColor,
+                    ContextMenuStrip = sn.ContextMenuStrip,
+                };
+                target.Add(live);
+                if (sn.Children.Count > 0)
+                    RestoreFromSnapshot(live.Nodes, sn.Children);
+            }
+        }
+
+        /// <summary>
+        /// Called whenever a new archive is loaded or the current one is closed.
+        /// Discards the snapshot, clears the search box back to its placeholder,
+        /// and resets the combo to Files mode — so stale results from the
+        /// previous container don't carry over into the new one.
+        /// </summary>
+        internal void ResetContainerSearchIfActive()
+        {
+            _containerSnapshot = null;
+
+            // Clear the search box and reset to Files mode unconditionally so
+            // the previous query never runs against the newly loaded tree.
+            searchBoxHasRealText = false;
+            searchBox.Text = SearchPlaceholder;
+            searchBox.ForeColor = System.Drawing.Color.Gray;
+            searchStatusLabel.Text = "";
+
+            // Snap the combo back to Files (index 0) without triggering the
+            // full mode-switch handler — just suppress the event temporarily.
+            if (searchModeCombo.SelectedIndex != 0)
+            {
+                searchModeCombo.SelectedIndexChanged -= searchModeCombo_SelectedIndexChanged;
+                searchModeCombo.SelectedIndex = 0;
+                searchModeCombo.SelectedIndexChanged += searchModeCombo_SelectedIndexChanged;
+            }
+
+            // Hide the results list so the tree is shown cleanly.
+            searchResults.Visible = false;
         }
     }
 }

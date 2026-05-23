@@ -537,6 +537,7 @@
     </Compile>
     <Compile Include="Forms\FileViewers\Sfd\SofdecDemuxer.cs" />
     <Compile Include="Forms\FileViewers\Sfd\Mpeg1Decoder.cs" />
+    <Compile Include="Forms\NativeLoader.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Forms\FileViewers\ClothingFileViewer.resx">
@@ -700,10 +701,6 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="app.config" />
-    <None Include="Forms\FileIndex\psu_file_index.gz">
-      <Link>psu_file_index.gz</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <Compile Include="Forms\FileViewers\XncpFileViewer.Designer.cs">
       <DependentUpon>XncpFileViewer.cs</DependentUpon>
     </Compile>
@@ -744,6 +741,9 @@
     <Compile Include="Forms\FileViewers\XvrViewer.Designer.cs">
       <DependentUpon>XvrViewer.cs</DependentUpon>
     </Compile>
+    <Content Include="psu_file_index.gz">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\DataSources\" />
@@ -771,35 +771,15 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="avcodec-62.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="avfilter-11.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="avformat-62.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="avutil-60.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="ffmpeg_helpers.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="avcodec-62.dll" />
+    <EmbeddedResource Include="avformat-62.dll" />
+    <EmbeddedResource Include="avutil-60.dll" />
+    <EmbeddedResource Include="ffmpeg_helpers.dll" />
     <Content Include="icon6464.ico" />
-    <Content Include="libwinpthread-1.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="pl_mpeg.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="libwinpthread-1.dll" />
+    <EmbeddedResource Include="pl_mpeg.dll" />
     <Content Include="Resources\Logo.png" />
-    <Content Include="swresample-6.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="swscale-9.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="swresample-6.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

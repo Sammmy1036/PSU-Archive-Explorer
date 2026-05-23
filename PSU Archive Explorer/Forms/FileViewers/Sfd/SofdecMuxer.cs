@@ -64,8 +64,7 @@ namespace psu_archive_explorer
                     "Framerate must be positive.");
 
             // ---- Parse ADX header to get audio layout ----
-            if (adxBytes[0] != 0x80 || adxBytes[1] != 0x00)
-                throw new InvalidDataException("ADX data does not start with 0x80 0x00.");
+            // Note: adxBytes may be null for video-only SFDs — guarded by hasAudioTrack.
 
             // Parse ADX header and prepare audio payload only when audio is present.
             byte[] adxPayload = null;

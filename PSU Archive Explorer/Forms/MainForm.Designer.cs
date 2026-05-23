@@ -462,18 +462,24 @@
             // 
             // searchModeCombo
             // 
-            // Hidden by default. MainForm constructor calls
-            // EnableStringSearchToggleIfAvailable() at startup, which probes
-            // for psu_string_index.gz and reveals this combo only if the
-            // index file is present. When visible, it anchors top-right of
-            // the search panel and reduces the search box width to make
-            // room.
+            // Always visible — Container mode is always available regardless of
+            // whether the optional string index is present. At startup,
+            // EnableStringSearchToggleIfAvailable() positions the combo next to
+            // the search box and removes the "Strings" item if the index file
+            // is not found next to the EXE.
+            //
+            // Item layout:
+            //   0 = Files      — searches the global PSU file index
+            //   1 = Container  — filters the currently loaded container in-memory
+            //   2 = Strings    — searches the optional PSU string index (removed
+            //                    at runtime if psu_string_index.gz is absent)
             this.searchModeCombo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.searchModeCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.searchModeCombo.FlatStyle = System.Windows.Forms.FlatStyle.System;
             this.searchModeCombo.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.searchModeCombo.Items.AddRange(new object[] {
             "Files",
+            "Container",
             "Strings"});
             this.searchModeCombo.Location = new System.Drawing.Point(192, 0);
             this.searchModeCombo.Name = "searchModeCombo";
