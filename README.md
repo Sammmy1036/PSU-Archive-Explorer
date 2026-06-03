@@ -10,25 +10,44 @@
   <strong><a href="https://github.com/Sammmy1036/PSU-Archive-Explorer/releases" style="font-size: 1.3em;">⬇️ Download Latest Release</a></strong>
 </p>
 
-## PSU Archive Explorer is a tool for browsing, extracting, and editing files from Phantasy Star Universe (PSU) game archives. It supports NBL, AFS, MiniAFS, ADX, BIN, DAT, REL, K, NOM, SFD, PSO, VSO, XNA, XNCP, XNCF, XNJ, XNM, XNR, XNT, and XVR file formats, with built-in preview for audio, video, and animation files. 
+## PSU Archive Explorer is a tool for browsing, extracting, and editing files from Phantasy Star Universe (PSU) game archives. It supports NBL, AFS, MiniAFS, ADX, BIN, DAT, REL, K, NOM, SFD, PSO, VSO, XNA, XNCP, XNCF, XNJ, XNM, XNR, XNT, and XVR file formats, with built-in preview for audio, video, and animation files.
 
-## Whats Changed
+## What's Changed
 
-New Features
+**ADX & DAT Sound Previewer/Importer/Exporter**
+- Decodes audio and provides preview of ADX and DAT Sound files prior to export along with importing/exporting sounds.
+<img src="Images/ADX Preview.png" width="800">
+
+**Note**:
+If you want to edit audio files which are packed in .dat files, it is recommended to edit inside of Audacity in raw .dat format to preserve file headers. Otherwise, you would need to rewrite headers in a Hex Editor of your choice.
+
+**SFD Previewer/Importer/Exporter**
+- Decodes and provides preview of SFD video files prior to export along with importing/exporting videos.
+<img src="Images/SFD Preview.png" width="800">
+
+**NOM Animation Previewer/Importer/Exporter**
+- Decodes and provides preview of NOM Animation files prior to export along with importing/exporting GLB animations.
+<img src="Images/NOM Previewer.gif" width="800">
+
+### New Features After Fork
 - Now exports ADX formats to WAV
 - Now exports DAT sound formats to WAV
 - Now exports NOM animation files to GLB
+- Now exports SFD video files to MP4/MKV
+- Now imports MP4/MKV and converts to SFD
+- Now imports WAV and encodes to ADX
+- Now imports custom GLB files and converts to NOM for use in game
 - Now reads/extracts archives which are identified as ADX instead of being read as null
 - Now analyzes ADX mappings file to determine the actual name of certain hashed ADX files
 - Now provides hints which will display if a file cannot be opened and provides possible resolution
 - Now provides a preview of ADX and DAT Sound Files directly in PSU Archive Explorer prior to export
 - Now provides a preview of SFD Video Files directly in PSU Archive Explorer prior to export
 - Now provides preview of NOM Animation Files directly in PSU Archive Explorer prior to export
-- Now provides a search bar where you can search directly for files from the hash index
+- Now provides a search bar where you can search directly for files from the hash index or while in a container
 - Now provides user more information regarding file types and what they do
 - Now provides enhanced parsing for XNCF, XNCP, XNJ, XNR (UI Related), and XVR files
 
-Bug Fixes
+### Bug Fixes After Fork
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
 - Fixes Application Not Responding when clicking large files in the tree view
 - Fixes export from folder to now correctly extract all hashed files
@@ -39,18 +58,21 @@ Bug Fixes
 - Fixes export dialogue not appearing when exporting SFD videos
 - Fixes close button not working for Animation Hash Window
 - Fixes file truncation for certain nbl's larger than 32 bytes
+- Fixed malformed AFS archive output caused by bitmask typo and missing per-file 0x800 boundary padding
+- Fixed stale parsed file objects when replacing files in AFS archives
+- Fixed padding gaps not being zero-filled when writing several file types, which could leave garbage bytes in output files
+- Fixed files with unaligned lengths being incorrectly marked as broken in PointeredFile
+- Fixed knee/foot bone animation lists coming out empty or corrupted in NOM files due to missing frame type cases
+- Fixed bullet/tech/unit/skill param files producing incorrect output sizes due to padding calculation errors
+- Fixed ItemBulletParamFile accepting non-bullet files as valid input
+- Fixed ObjectParticleInfoFile writing incorrect file structure due to wrong padding formula
+- Fixed chunkSize defaulting to 0 instead of 0x60 when loading certain RawFiles, causing malformed chunk headers in NBL output
+- Fixed NOM frame desync for certain enemy bones caused by missing position frame type handlers
 
-Updates
-- Updated .NET framework moved to 4.8
+### Updates After Fork
+- Updated .NET framework to 4.8
 - Updated C# language to 7.3
 - Updated PSULib to now support multiple new file formats
-
-Upcoming Features
-- SFD export to MP4/MKV
-- MP4/MKV import to SFD
-- WAV to ADX Encoding
-- GLB importer allowing custom GLB's to be converted to NOM and usable in game
-<img src="Images/AnimationImporter.png" width="800">
 
 ## How to Use the PSU Archive Explorer
 
@@ -84,24 +106,6 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **XNT**   | Texture list / material mapping files (links texture slots in models to actual XVR textures) |
 | **XVR**   | Texture files (characters, environments, UI, etc.) |
 
-**ADX & DAT Sound Previewer**
-- Decodes audio and provides preview of ADX and DAT Sound files prior to export.
-<img src="Images/ADX Preview.png" width="800">
-
-**Note**: To **replace** audio:
-- Convert your `.wav` to ADX using **ADX Converter & Player** (available on GameBanana: https://gamebanana.com/tools/6491).
-- Rename the resulting `.adx` to match the original hashed filename (remove the `.adx` extension).
-
-If you want to edit audio files which are packed in .dat files, it is recommended to edit inside of Audacity in raw .dat format to preserve file headers. Otherwise, you would need to rewrite headers in a Hex Editor of your choice.
-
-**SFD Previewer**
-- Decodes and provides preview of SFD video files prior to export.
-<img src="Images/SFD Preview.png" width="800">
-
-**NOM Animation Previewer**
-- Decodes and provides preview of NOM Animation files prior to export.
-<img src="Images/NOM Previewer.gif" width="800">
-
 ## Special Thanks
 - **Agrathejagged** — Tenora Works, documentation, and the general footing for all things modding for PSU
 - **VGStream** - KC for PSU AOTI
@@ -119,4 +123,3 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 
 ---
 <a href="https://github.com/Sammmy1036/PSU-Archive-Explorer"> PSU Archive Explorer</a>
-
