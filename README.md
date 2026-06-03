@@ -29,7 +29,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Decodes and provides preview of NOM Animation files prior to export along with importing/exporting GLB animations.
 <img src="Images/NOM Previewer.gif" width="800">
 
-### New Features After Fork
+### New Features
 - Now exports ADX formats to WAV
 - Now exports DAT sound formats to WAV
 - Now exports NOM animation files to GLB
@@ -47,7 +47,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Now provides user more information regarding file types and what they do
 - Now provides enhanced parsing for XNCF, XNCP, XNJ, XNR (UI Related), and XVR files
 
-### Bug Fixes After Fork
+### Bug Fixes
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
 - Fixes Application Not Responding when clicking large files in the tree view
 - Fixes export from folder to now correctly extract all hashed files
@@ -69,7 +69,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Fixed chunkSize defaulting to 0 instead of 0x60 when loading certain RawFiles, causing malformed chunk headers in NBL output
 - Fixed NOM frame desync for certain enemy bones caused by missing position frame type handlers
 
-### Updates After Fork
+### Updates
 - Updated .NET framework to 4.8
 - Updated C# language to 7.3
 - Updated PSULib to now support multiple new file formats
