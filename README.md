@@ -69,6 +69,13 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Fixed chunkSize defaulting to 0 instead of 0x60 when loading certain RawFiles, causing malformed chunk headers in NBL output
 - Fixed NOM frame desync for certain enemy bones caused by missing position frame type handlers
 
+### Known Bugs Working to Resolve
+- Expanding window while previewing SFD files certain playback buttons turn invisible
+- Expanding window while previewing SFD files certain portions of UI glitch visually
+- Expanding window file container box does not scale properly with UI
+- When selecting certain files in container while previewing, file font color turns black when it should remain white
+- Certain labels on menu shifting / losing alignment when scaling UI
+
 ### Updates
 - Updated .NET framework to 4.8
 - Updated C# language to 7.3
