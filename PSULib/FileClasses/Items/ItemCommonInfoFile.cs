@@ -148,6 +148,7 @@ namespace PSULib.FileClasses.Items
                 }
             }
             outStream.Seek(outStream.Position + 3 & 0xFFFFFFFC, SeekOrigin.Begin);
+            outStream.SetLength(outStream.Position);
             int headersLoc = (int)outStream.Position;
             for (int i = 0; i < totalEntries; i++)
             {

@@ -219,6 +219,18 @@
     <Compile Include="Forms\FileIndex\StringIndex.cs" />
     <Compile Include="Forms\FileViewers\Adx\AdxDecoder.cs" />
     <Compile Include="Forms\FileViewers\Adx\AdxEncoder.cs" />
+    <Compile Include="Forms\FileViewers\Bosses\BossServerParamViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\Bosses\BossServerParamViewer.Designer.cs">
+      <DependentUpon>BossServerParamViewer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FileViewers\Common\ColorEditor.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\Common\ColorEditor.Designer.cs">
+      <DependentUpon>ColorEditor.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FileViewers\DatAudio\DATConverter.cs" />
     <Compile Include="Forms\FileViewers\Adx\AdxPreviewPanel.cs">
       <SubType>UserControl</SubType>
@@ -298,6 +310,12 @@
     <Compile Include="Forms\FileViewers\EnemyLayoutViewer.Designer.cs">
       <DependentUpon>EnemyLayoutViewer.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FileViewers\FogBankViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\FogBankViewer.Designer.cs">
+      <DependentUpon>FogBankViewer.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FileViewers\ItemBulletParamViewer.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -322,6 +340,12 @@
     <Compile Include="Forms\FileViewers\ItemSkillParamViewer.Designer.cs">
       <DependentUpon>ItemSkillParamViewer.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FileViewers\ItemSkillParamViewerPsp2.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\ItemSkillParamViewerPsp2.Designer.cs">
+      <DependentUpon>ItemSkillParamViewerPsp2.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FileViewers\ItemTechParamViewer.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -339,6 +363,36 @@
     </Compile>
     <Compile Include="Forms\FileViewers\LndCommonEditor.Designer.cs">
       <DependentUpon>LndCommonEditor.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEffects\FogBankPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEffects\FogBankPanel.Designer.cs">
+      <DependentUpon>FogBankPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEffects\GradientEditorPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEffects\GradientEditorPanel.Designer.cs">
+      <DependentUpon>GradientEditorPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEffects\LightEditorPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEffects\LightEditorPanel.Designer.cs">
+      <DependentUpon>LightEditorPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEffectViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEffectViewer.Designer.cs">
+      <DependentUpon>LndEffectViewer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEnemyLightViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\LndEnemyLightViewer.Designer.cs">
+      <DependentUpon>LndEnemyLightViewer.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FileViewers\Nom\GlbImportOptionsDialog.cs">
       <SubType>Form</SubType>

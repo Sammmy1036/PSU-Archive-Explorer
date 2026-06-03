@@ -31,7 +31,7 @@ namespace PSULib.FileClasses.Missions
             [DataMember]
             public byte unkByte1;
             [DataMember]
-            public short unkShort1;
+            public short spawnAnimation;
             //Possibly related to SpawnData::unkShort1 and unkShort2. Valid values are 0, 1, 2, 3 (any value above 3 is treated as equivalent to 3)
             [DataMember]
             public short unkShort2;
@@ -58,7 +58,7 @@ namespace PSULib.FileClasses.Missions
             public override string ToString()
             {
                 return "monsterNum:" + monsterNum + "\telement:" + element + "\tkingBuff:" + kingBuff + "\tshieldBuff:" + shieldBuff + "\tswordBuff:" + swordBuff + "\tunkBuff:" + unkBuff + "\tstaffBuff:" + staffBuff +
-                    "\tunkByte1:" + unkByte1.ToString("X2") + "\tunkShort1:" + unkShort1.ToString("X4") + "\tunkShort2:" + unkShort2.ToString("X4") + "\tspawnDelay:" + spawnDelay + "\tcount:" + count +
+                    "\tunkByte1:" + unkByte1.ToString("X2") + "\tspawnAnimation:" + spawnAnimation.ToString("X4") + "\tunkShort2:" + unkShort2.ToString("X4") + "\tspawnDelay:" + spawnDelay + "\tcount:" + count +
                     "\tunkShort3:" + unkShort3.ToString("X4") + "\tunkShort4:" + unkShort4.ToString("X4") + "\tlevelMod:" + unknownShort5 + "\tunkShort5:" + levelModifier.ToString("X4") + "\tunkShort6:" + levelCapUnused.ToString("X4") +
                     "\tunkShort7:" + unkShort7.ToString("X4") + "\tunkShort8:" + unkShort8.ToString("X4") + "\tunkInt1:" + unkInt1.ToString("X8");
             }
@@ -170,7 +170,7 @@ namespace PSULib.FileClasses.Missions
                         spawns[i].monsters[j][k].unkBuff = fileReader.ReadByte();
                         spawns[i].monsters[j][k].staffBuff = fileReader.ReadByte();
                         spawns[i].monsters[j][k].unkByte1 = fileReader.ReadByte();
-                        spawns[i].monsters[j][k].unkShort1 = fileReader.ReadInt16();
+                        spawns[i].monsters[j][k].spawnAnimation = fileReader.ReadInt16();
                         spawns[i].monsters[j][k].unkShort2 = fileReader.ReadInt16();
                         spawns[i].monsters[j][k].spawnDelay = fileReader.ReadInt16();
                         spawns[i].monsters[j][k].count = fileReader.ReadInt16();
@@ -240,7 +240,7 @@ namespace PSULib.FileClasses.Missions
                         outWriter.Write(tempMonster.unkBuff);
                         outWriter.Write(tempMonster.staffBuff);
                         outWriter.Write(tempMonster.unkByte1);
-                        outWriter.Write(tempMonster.unkShort1);
+                        outWriter.Write(tempMonster.spawnAnimation);
                         outWriter.Write(tempMonster.unkShort2);
                         outWriter.Write(tempMonster.spawnDelay);
                         outWriter.Write(tempMonster.count);

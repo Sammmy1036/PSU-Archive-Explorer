@@ -65,6 +65,7 @@ namespace PSULib.FileClasses.Missions
                 questFilenameLocs[i] = (int)outStream.Position;
                 outWriter.Write(Encoding.GetEncoding("shift-jis").GetBytes(questList[i].FileName + "\0"));
                 outStream.Seek(outStream.Position + 3 & 0xFFFFFFFC, SeekOrigin.Begin);
+                outStream.SetLength(outStream.Position);
             }
             int questListLoc = (int)outStream.Position;
             for (int i = 0; i < questList.Count; i++)
@@ -79,6 +80,7 @@ namespace PSULib.FileClasses.Missions
             outWriter.Write(questListLoc);
             outWriter.Write(questList.Count);
             outStream.Seek(outStream.Position + 0x1F & 0xFFFFFFE0, SeekOrigin.Begin);
+            outStream.SetLength(outStream.Position);
             int fileLength = (int)outStream.Position;
             outStream.Seek(0, SeekOrigin.Begin);
             outWriter.Write(new byte[] { 0x4E, 0x58, 0x52, 0 });

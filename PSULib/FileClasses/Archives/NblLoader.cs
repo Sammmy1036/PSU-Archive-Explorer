@@ -713,12 +713,20 @@ namespace PSULib.FileClasses.Archives
             {
                 loadedFileCache.Remove(fileContents[index].filename);
             }
+            if (toReplace.chunkSize == 0)
+            {
+                toReplace.chunkSize = 0x60;
+            }
             fileContents[index] = toReplace;
             cacheValid = false;
         }
 
         public void addFile(int index, RawFile toAdd)
         {
+            if (toAdd.chunkSize == 0)
+            {
+                toAdd.chunkSize = 0x60;
+            }
             fileContents.Insert(index, toAdd);
             cacheValid = false;
         }

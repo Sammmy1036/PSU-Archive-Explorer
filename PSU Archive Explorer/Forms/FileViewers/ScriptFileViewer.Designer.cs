@@ -160,6 +160,7 @@
             this.subroutineSearchBox.Size = new System.Drawing.Size(141, 20);
             this.subroutineSearchBox.TabIndex = 15;
             this.subroutineSearchBox.TextChanged += new System.EventHandler(this.subroutineSearch_TextChanged);
+            this.subroutineSearchBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.subroutineSearchBox_KeyPress);
             // 
             // splitContainer2
             // 

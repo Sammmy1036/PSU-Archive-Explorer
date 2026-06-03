@@ -4,6 +4,8 @@ using System.Linq;
 using System.Windows.Forms;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Text.RegularExpressions;
+using System.Media;
 using psu_archive_explorer.Forms.FileViewers.Scripts;
 using PSULib.FileClasses.General;
 
@@ -71,14 +73,14 @@ namespace psu_archive_explorer
                 bufferLengthUpDown.Visible = false;
                 dataGridView2.Enabled = true;
             }
-            else if(currentSub.SubType == 0x49)
+            else if (currentSub.SubType == 0x49)
             {
                 comboBox1.SelectedIndex = 1;
                 bufferLengthLabel.Visible = true;
                 bufferLengthUpDown.Visible = true;
                 dataGridView2.Enabled = false;
             }
-            else if(currentSub.SubType == 0x3C)
+            else if (currentSub.SubType == 0x3C)
             {
                 comboBox1.SelectedIndex = 0;
                 bufferLengthLabel.Visible = false;
@@ -115,7 +117,7 @@ namespace psu_archive_explorer
                 subroutineListBox.Items.RemoveAt(oldIndex);
                 internalFile.Subroutines.RemoveAt(oldIndex);
                 forceChange = true;
-                subroutineListBox.SelectedIndex = Math.Min(oldIndex, subroutineListBox.Items.Count -1);
+                subroutineListBox.SelectedIndex = Math.Min(oldIndex, subroutineListBox.Items.Count - 1);
             }
         }
 
@@ -136,12 +138,12 @@ namespace psu_archive_explorer
             comboBox.Items.AddRange(subroutineListBox.Items.Cast<string>().ToArray());
             comboBox.Items.Add("End of file");
             comboBox.SelectedIndex = 0;
-            
+
             NumericUpDown inputBox = new NumericUpDown() { Left = 50, Top = 50, Width = 400 };
             Button confirmation = new Button() { Text = "OK", Left = 125, Width = 100, Top = 85 };
             confirmation.Click += (a, b) => { prompt.Close(); accept = true; };
             Button cancel = new Button() { Text = "Cancel", Left = 250, Width = 100, Top = 85 };
-            cancel.Click += (a, b) => { prompt.Close();};
+            cancel.Click += (a, b) => { prompt.Close(); };
             prompt.Controls.Add(confirmation);
             prompt.Controls.Add(textLabel);
             prompt.Controls.Add(comboBox);
@@ -219,7 +221,7 @@ namespace psu_archive_explorer
             if (!changing)
             {
                 changing = true;
-                switch(comboBox1.SelectedIndex)
+                switch (comboBox1.SelectedIndex)
                 {
                     //Numeric variable
                     case 0:
@@ -276,7 +278,7 @@ namespace psu_archive_explorer
 
         private void bufferLengthUpDown_ValueChanged(object sender, EventArgs e)
         {
-            if(!changing)
+            if (!changing)
             {
                 ScriptFile.Subroutine currentSub = internalFile.Subroutines[subroutineListBox.SelectedIndex];
                 currentSub.BufferLength = (int)bufferLengthUpDown.Value;
@@ -285,8 +287,30 @@ namespace psu_archive_explorer
 
         private void subroutineSearch_TextChanged(object sender, EventArgs e)
         {
-            int result = subroutineListBox.FindString(subroutineSearchBox.Text);
-            if(result != -1)
+        }
+
+        private void subroutineSearchBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == '\r')
+            {
+                if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift)
+                {
+                    findSubroutineByName(subroutineSearchBox.Text, subroutineListBox.SelectedIndex - 1, findLastIndex);
+                }
+                else
+                {
+                    findSubroutineByName(subroutineSearchBox.Text, subroutineListBox.SelectedIndex + 1, findIndex);
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void findSubroutineByName(string subName, int selectedIndex, Func<string, int, int> findFunc)
+        {
+            string sanitized = "^" + Regex.Escape(subName).Replace("\\*", ".*");
+            int localResult = findFunc(sanitized, selectedIndex);
+            int result = localResult != -1 ? localResult : findFunc(sanitized, 0);
+            if (result != -1)
             {
                 subroutineListBox.SelectedIndex = result;
                 subroutineSearchBox.ForeColor = SystemColors.WindowText;
@@ -294,7 +318,18 @@ namespace psu_archive_explorer
             else
             {
                 subroutineSearchBox.ForeColor = Color.Red;
+                SystemSounds.Exclamation.Play();
             }
+        }
+
+        private int findIndex(string searchString, int initialIndex)
+        {
+            return internalFile.Subroutines.FindIndex(initialIndex, subroutine => Regex.IsMatch(subroutine.SubroutineName, searchString, RegexOptions.IgnoreCase));
+        }
+
+        private int findLastIndex(string searchString, int lastIndex)
+        {
+            return internalFile.Subroutines.FindLastIndex(lastIndex > 0 ? lastIndex : internalFile.Subroutines.Count - 1, subroutine => Regex.IsMatch(subroutine.SubroutineName, searchString, RegexOptions.IgnoreCase));
         }
 
         private void goToReferenceToolStripMenuItem_Click(object sender, EventArgs e)
@@ -315,7 +350,7 @@ namespace psu_archive_explorer
                     MessageBox.Show("Could not find label: " + currentOp.OperandText);
                 }
             }
-            else if(currentOp.OpCodeType == ScriptFile.OpCodeOperandTypes.FunctionName || currentOp.OpCodeType == ScriptFile.OpCodeOperandTypes.NumericVariableName || currentOp.OpCodeType == ScriptFile.OpCodeOperandTypes.StringVariableName)
+            else if (currentOp.OpCodeType == ScriptFile.OpCodeOperandTypes.FunctionName || currentOp.OpCodeType == ScriptFile.OpCodeOperandTypes.NumericVariableName || currentOp.OpCodeType == ScriptFile.OpCodeOperandTypes.StringVariableName)
             {
                 int selectedIndex = internalFile.Subroutines.FindIndex(op => op.SubroutineName == currentOp.OperandText);
                 if (selectedIndex != -1)
@@ -370,10 +405,10 @@ namespace psu_archive_explorer
         public void SelectOperation(string subroutineName, int lineNumber)
         {
             int functionIndex = internalFile.Subroutines.FindIndex(sub => sub.SubroutineName == subroutineName);
-            if(functionIndex != -1)
+            if (functionIndex != -1)
             {
                 subroutineListBox.SelectedIndex = functionIndex;
-                if(internalFile.Subroutines[functionIndex].Operations.Count > lineNumber)
+                if (internalFile.Subroutines[functionIndex].Operations.Count > lineNumber)
                 {
                     dataGridView2.CurrentCell = dataGridView2.Rows[lineNumber].Cells[0];
                 }
@@ -384,18 +419,18 @@ namespace psu_archive_explorer
         {
             string subroutineName = (string)subroutineListBox.SelectedItem;
             var findResults = new List<Tuple<string, int>>();
-            foreach(var subroutine in internalFile.Subroutines)
+            foreach (var subroutine in internalFile.Subroutines)
             {
-                for(int i = 0; i < subroutine.Operations.Count; i++)
+                for (int i = 0; i < subroutine.Operations.Count; i++)
                 {
-                    if(hasSubroutineDestination(subroutine.Operations[i].OpCodeType) && subroutine.Operations[i].OperandText == subroutineName)
+                    if (hasSubroutineDestination(subroutine.Operations[i].OpCodeType) && subroutine.Operations[i].OperandText == subroutineName)
                     {
                         findResults.Add(new Tuple<string, int>(subroutine.SubroutineName, i));
                     }
                 }
             }
 
-            if(findResults.Count > 0)
+            if (findResults.Count > 0)
             {
                 ReferenceFindDialog dlg = new ReferenceFindDialog(this, subroutineName, findResults);
                 children.Add(dlg);

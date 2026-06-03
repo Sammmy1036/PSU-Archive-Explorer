@@ -97,6 +97,7 @@ namespace PSULib.FileClasses.Models
 
             int fileLength = (int)outStream.Position;
             outStream.Seek(fileLength + 0xF & 0xFFFFFFF0, SeekOrigin.Begin);
+            outStream.SetLength(outStream.Position);
             int paddedFileLength = (int)outStream.Position;
             outStream.Seek(stringTableLoc, SeekOrigin.Begin);
             for (int i = 0; i < boneReferences.Count; i++)

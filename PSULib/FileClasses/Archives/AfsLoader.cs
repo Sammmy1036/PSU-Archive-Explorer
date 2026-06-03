@@ -144,6 +144,8 @@ namespace PSULib.FileClasses.Archives
                 afsList[index].fileContents = new NblLoader(new MemoryStream(afsList[index].rawContents));
             }
             afsList[index].fileSize = (uint)toImport.Length;
+            afsList[index].fileContents = null;
+            populateFile(afsList[index]);
         }
 
         public void addFile(string filename, Stream toImport)
@@ -179,12 +181,15 @@ namespace PSULib.FileClasses.Archives
             beta.Write(Encoding.ASCII.GetBytes("AFS\0"));
             beta.Write(fileCount);
             uint[] fileLocs = new uint[fileCount + 1];
-            fileLocs[0] = (uint)((fileCount + 1) * 8 + 0x7FF & 0xFFFF800);
+            fileLocs[0] = (uint)((fileCount + 1) * 8 + 0x7FF & 0xFFFFF800);
             saveFile.Seek(fileLocs[0], SeekOrigin.Begin);
             for (int i = 0; i < fileCount; i++)
             {
                 fileLocs[i] = (uint)saveFile.Position;
                 beta.Write(afsList[i].rawContents);
+                long padded = (saveFile.Position + 0x7FF) & 0xFFFFF800;
+                saveFile.Seek(padded, SeekOrigin.Begin);
+                saveFile.SetLength(saveFile.Position);
             }
             fileLocs[fileCount] = (uint)saveFile.Position;
             for (int i = 0; i < fileCount; i++)
@@ -346,14 +351,14 @@ namespace PSULib.FileClasses.Archives
             int[] fileSizes = new int[fileCount];
             int metadataLoc = 0;
             int metadataLength = fileCount * 0x30;
-            outStream.Seek((fileCount + 1) * 8 + 0x7FF & 0xFFFF800, SeekOrigin.Begin);
+            outStream.Seek((fileCount + 1) * 8 + 0x7FF & 0xFFFFF800, SeekOrigin.Begin);
             for (int i = 0; i < fileCount; i++)
             {
                 byte[] currFile = File.ReadAllBytes(filenames[i]);
                 fileLocs[i] = (int)outStream.Position;
                 fileSizes[i] = currFile.Length;
                 outWriter.Write(currFile);
-                outStream.Seek(outStream.Position + 0x7FF & 0xFFFF800, SeekOrigin.Begin);
+                outStream.Seek(outStream.Position + 0x7FF & 0xFFFFF800, SeekOrigin.Begin);
             }
             metadataLoc = (int)outStream.Position;
             for (int i = 0; i < fileCount; i++)
@@ -434,8 +439,6 @@ namespace PSULib.FileClasses.Archives
             int highestZone = zoneNbls.Keys.Max();
             AddLanguages(toReturn, questNbl, "quest", createAllLanguages);
 
-            //Alright, so.
-            //0-1-10-11-...2-20-21...-
             for (int i = 0; i < 10; i++)
             {
                 if (zoneNbls.ContainsKey(i))

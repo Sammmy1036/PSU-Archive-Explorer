@@ -143,7 +143,9 @@ namespace PSULib.FileClasses.Items
                 outWriter.Write((short)0);
                 outWriter.Write((short)clothes[i].Count);
             }
-            int fileSize = (int)(outStream.Position + 0xF & 0xFFFFFF0);
+            outStream.Seek(outStream.Position + 0xF & 0xFFFFFFF0, SeekOrigin.Begin);
+            outStream.SetLength(outStream.Position);
+            int fileSize = (int)outStream.Position;
             outStream.Seek(0x4, SeekOrigin.Begin);
             outWriter.Write(fileSize);
             outWriter.Write(headerLoc);

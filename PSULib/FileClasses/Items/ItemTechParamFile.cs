@@ -155,6 +155,7 @@ namespace PSULib.FileClasses.Items
                 indexLoc = (int)outStream.Position;
                 outWriter.Write(techIndexes);
                 outStream.Seek(outStream.Position + 3 & 0xFFFFFFFC, SeekOrigin.Begin);
+                outStream.SetLength(outStream.Position);
             }
             int headerLoc = (int)outStream.Position;
             outWriter.Write(allTechs[0].Length);
@@ -172,6 +173,7 @@ namespace PSULib.FileClasses.Items
             ptrs[ptrShift + 1] = (int)outStream.Position;
             outWriter.Write(tierLoc);
             outStream.Seek(outStream.Position + 7 & 0xFFFFFFF8, SeekOrigin.Begin);
+            outStream.SetLength(outStream.Position);
             int fileLength = (int)outStream.Position;
             outStream.Seek(0, SeekOrigin.Begin);
             outWriter.Write(0x0052584E);

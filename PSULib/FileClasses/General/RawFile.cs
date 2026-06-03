@@ -50,7 +50,14 @@ namespace PSULib.FileClasses.General
             if (success)
             {
                 fileheader = initialHeader;
-                chunkSize = testChunkSize;
+                if (testChunkSize == 0)
+                {
+                    chunkSize = 0x60;
+                }
+                else
+                {
+                    chunkSize = testChunkSize;
+                }
                 inStream.Seek(0x10, SeekOrigin.Begin);
                 filename = Encoding.GetEncoding("shift-jis").GetString(inReader.ReadBytes(0x20));
                 filename = filename.TrimEnd('\0');
@@ -126,6 +133,7 @@ namespace PSULib.FileClasses.General
                 outStream.Seek(0x60, SeekOrigin.Begin);
             outWriter.Write(toSave);
             outStream.Seek(outStream.Position + 0x7F & 0xFFFFFF80, SeekOrigin.Begin);
+            outStream.SetLength(outStream.Position);
             if (pointers != null)
             {
                 for (int i = 0; i < pointers.Count; i++)

@@ -333,7 +333,7 @@ namespace PSULib.FileClasses.Items
                 outWriter.Write(indexes[0]);
             }
             outStream.Seek(outStream.Position + 0x3 & 0xFFFFFFFC, SeekOrigin.Begin);
-
+            outStream.SetLength(outStream.Position);
             unitLocs[1] = (int)outStream.Position;
             for (int i = 0; i < armUnits.Count; i++)
             {
@@ -367,7 +367,7 @@ namespace PSULib.FileClasses.Items
                 outWriter.Write(indexes[1]);
             }
             outStream.Seek(outStream.Position + 0x3 & 0xFFFFFFFC, SeekOrigin.Begin);
-
+            outStream.SetLength(outStream.Position);
             unitLocs[2] = (int)outStream.Position;
             for (int i = 0; i < bodyUnits.Count; i++)
             {
@@ -397,7 +397,7 @@ namespace PSULib.FileClasses.Items
                 outWriter.Write(indexes[2]);
             }
             outStream.Seek(outStream.Position + 0x3 & 0xFFFFFFFC, SeekOrigin.Begin);
-
+            outStream.SetLength(outStream.Position);
             unitLocs[3] = (int)outStream.Position;
             for (int i = 0; i < extraUnits.Count; i++)
             {
@@ -427,7 +427,7 @@ namespace PSULib.FileClasses.Items
                 outWriter.Write(indexes[3]);
             }
             outStream.Seek(outStream.Position + 0x3 & 0xFFFFFFFC, SeekOrigin.Begin);
-
+            outStream.SetLength(outStream.Position);
             List<int> ptrs = new List<int>();
             int headerLoc = (int)outStream.Position;
             for (int i = 0; i < 4; i++)
@@ -444,6 +444,7 @@ namespace PSULib.FileClasses.Items
                 outWriter.Write((short)counts[i]);
             }
             outStream.Seek(outStream.Position + 7 & 0xFFFFFFF8, SeekOrigin.Begin);
+            outStream.SetLength(outStream.Position);
             int fileLength = (int)outStream.Position;
             outStream.Seek(0, SeekOrigin.Begin);
             outWriter.Write(0x0052584E);

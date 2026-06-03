@@ -88,7 +88,7 @@ namespace psu_archive_explorer
             monBootBuffCheck.Checked = byteToBool(internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].unkBuff);
             monStaffBuffCheck.Checked = byteToBool(internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].staffBuff);
             monUnkByte1UD.Value = internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].unkByte1;
-            monUnkShort1UD.Value = internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].unkShort1;
+            monUnkShort1UD.Value = internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].spawnAnimation;
             monUnkShort2UD.Value = internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].unkShort2;
             monSpawnDelayUD.Value = internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].spawnDelay;
             monCountUD.Value = internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].count;
@@ -218,7 +218,7 @@ namespace psu_archive_explorer
 
         private void monUnkShort1UD_ValueChanged(object sender, EventArgs e)
         {
-            internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].unkShort1 = (short)monUnkShort1UD.Value;
+            internalFile.spawns[spawnEntryCB.SelectedIndex].monsters[monsterListCB.SelectedIndex][monstersCB.SelectedIndex].spawnAnimation = (short)monUnkShort1UD.Value;
         }
 
         private void monUnkShort2UD_ValueChanged(object sender, EventArgs e)
