@@ -86,7 +86,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 
 **ADX & DAT Sound Previewer**
 - Decodes audio and provides preview of ADX and DAT Sound files prior to export.
-<img src="Images/ADXMultiPreview.png" width="800">
+<img src="Images/ADX Preview.png" width="800">
 
 **Note**: To **replace** audio:
 - Convert your `.wav` to ADX using **ADX Converter & Player** (available on GameBanana: https://gamebanana.com/tools/6491).
