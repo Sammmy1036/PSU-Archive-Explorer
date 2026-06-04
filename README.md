@@ -46,6 +46,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Now provides a search bar where you can search directly for files from the hash index or while in a container
 - Now provides user more information regarding file types and what they do
 - Now provides enhanced parsing for XNCF, XNCP, XNJ, XNR (UI Related), and XVR files
+- Now provides a tray icon
 
 ### Bug Fixes
 - Fixes OutOfMemoryException error (Now allows opening/exporting of large files)
@@ -68,13 +69,9 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Fixed ObjectParticleInfoFile writing incorrect file structure due to wrong padding formula
 - Fixed chunkSize defaulting to 0 instead of 0x60 when loading certain RawFiles, causing malformed chunk headers in NBL output
 - Fixed NOM frame desync for certain enemy bones caused by missing position frame type handlers
-
-### Known Bugs Working to Resolve
-- Expanding window while previewing SFD files certain playback buttons turn invisible (Fixed will be included in 1.0.0.3)
-- Expanding window while previewing SFD files certain portions of UI glitch visually (Fixed will be included in 1.0.0.3)
-- Expanding window file container box does not scale properly with UI (Fixed will be included in 1.0.0.3)
-- Selecting of files loses focus while previewing (Fixed will be included in 1.0.0.3)
-- Certain labels on menu shifting / losing alignment when scaling UI (Fixed will be included in 1.0.0.3)
+- Fixed several UI bugs when scaling window of application
+- Fixed choppy video playback when previewing SFDs in fullscreen
+- Fixed files losing focus when previewing audio or video files
 
 ### Updates
 - Updated .NET framework to 4.8
@@ -112,6 +109,8 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **XNR**   | Parameter/data table files (UI/HUD Scaling, item stats, weapons, enemy drops, skills, technics, AI, etc.) |
 | **XNT**   | Texture list / material mapping files (links texture slots in models to actual XVR textures) |
 | **XVR**   | Texture files (characters, environments, UI, etc.) |
+
+**Locating string text in the game has also been indexed similarly to the file index gz file. However, the string index file has not been uploaded to GitHub due to the size being nearly 500 MB. Please reach out if you would like a copy of this index file.**
 
 ## Special Thanks
 - **Agrathejagged** — Tenora Works, documentation, and the general footing for all things modding for PSU
