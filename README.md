@@ -70,11 +70,11 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Fixed NOM frame desync for certain enemy bones caused by missing position frame type handlers
 
 ### Known Bugs Working to Resolve
-- Expanding window while previewing SFD files certain playback buttons turn invisible
-- Expanding window while previewing SFD files certain portions of UI glitch visually
-- Expanding window file container box does not scale properly with UI
-- When selecting certain files in container while previewing, file font color turns black when it should remain white
-- Certain labels on menu shifting / losing alignment when scaling UI
+- Expanding window while previewing SFD files certain playback buttons turn invisible (Fixed will be included in 1.0.0.3)
+- Expanding window while previewing SFD files certain portions of UI glitch visually (Fixed will be included in 1.0.0.3)
+- Expanding window file container box does not scale properly with UI (Fixed will be included in 1.0.0.3)
+- Selecting of files loses focus while previewing (Fixed will be included in 1.0.0.3)
+- Certain labels on menu shifting / losing alignment when scaling UI (Fixed will be included in 1.0.0.3)
 
 ### Updates
 - Updated .NET framework to 4.8
