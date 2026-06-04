@@ -110,7 +110,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **XNT**   | Texture list / material mapping files (links texture slots in models to actual XVR textures) |
 | **XVR**   | Texture files (characters, environments, UI, etc.) |
 
-**Locating string text in the game has also been indexed similarly to the file index gz file. However, the string index file has not been uploaded to GitHub due to the size being nearly 500 MB. Please reach out if you would like a copy of this index file.**
+**Locating string text in the game has also been indexed similarly to the psu_file_index.gz file. However, the string index file has not been uploaded to GitHub due to the size being nearly 500 MB. Please reach out if you would like a copy of this index file.**
 
 ## Special Thanks
 - **Agrathejagged** — Tenora Works, documentation, and the general footing for all things modding for PSU
