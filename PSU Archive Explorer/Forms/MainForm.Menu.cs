@@ -1733,7 +1733,12 @@ namespace psu_archive_explorer
             {
                 settings = new MainSettings(this);
             }
-            settings.Show();
+            settings.Show(this);
+            // Manually center over the main form — CenterParent only works
+            // reliably with ShowDialog, not modeless Show().
+            settings.Location = new System.Drawing.Point(
+                this.Left + (this.Width - settings.Width) / 2,
+                this.Top + (this.Height - settings.Height) / 2);
             settings.BringToFront();
         }
 
@@ -2327,10 +2332,12 @@ namespace psu_archive_explorer
                 _owner._multiSelectedNodes.Contains(e.Node) &&
                 e.Node != SelectedNode;
 
-            if (isExtraSelected)
+            bool isPrimarySelected = e.Node == SelectedNode;
+
+            if (isExtraSelected || isPrimarySelected)
             {
-                // Fill the row with the system highlight colour so extra-selected
-                // nodes look identical to the primary selection.
+                // Always paint with the active highlight colour regardless of focus,
+                // so text stays white even when the tree loses focus to the preview panel.
                 using (var brush = new SolidBrush(SystemColors.Highlight))
                     e.Graphics.FillRectangle(brush, e.Bounds);
 

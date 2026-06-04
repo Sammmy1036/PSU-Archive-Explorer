@@ -814,12 +814,45 @@ namespace psu_archive_explorer
                 if (dlg.ShowDialog() != CommonFileDialogResult.Ok) return false;
 
                 string selected = dlg.FileName;
+
+                // Smart adjustment: if the user selected the 'data' subfolder
+                // instead of the game root, walk up one level automatically.
+                try
+                {
+                    string trimmed = selected.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar);
+
+                    string lastName = Path.GetFileName(trimmed);
+                    if (string.IsNullOrEmpty(lastName))
+                    {
+                        var di2 = new DirectoryInfo(trimmed);
+                        lastName = di2.Name;
+                    }
+
+                    if (string.Equals(lastName, "data", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string parent = Path.GetDirectoryName(trimmed);
+                        if (!string.IsNullOrEmpty(parent))
+                        {
+                            selected = parent;
+                            MessageBox.Show(
+                                $"It looks like you selected the 'DATA' subfolder.\n\n" +
+                                $"Automatically adjusted to the game root:\n{selected}",
+                                "Game Directory Auto Adjusted",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                        }
+                    }
+                }
+                catch { /* leave selected as-is if detection fails */ }
+
                 string dataFolder = Path.Combine(selected, "data");
 
                 if (!Directory.Exists(dataFolder))
                 {
                     var result = MessageBox.Show(
-                        $"No 'data' subfolder found in:\n{selected}\n\nUse this folder anyway?",
+                        $"No 'DATA' subfolder found in:\n{selected}\n\nUse this folder anyway?",
                         "Game Directory",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning);

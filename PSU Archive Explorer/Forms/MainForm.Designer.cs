@@ -387,7 +387,7 @@
             this.treeView1.Location = new System.Drawing.Point(0, 26);
             this.treeView1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.treeView1.Name = "treeView1";
-            this.treeView1.Size = new System.Drawing.Size(272, 432);
+            this.treeView1.Size = new System.Drawing.Size(278, 432);
             this.treeView1.TabIndex = 0;
             this.treeView1.BeforeLabelEdit += new System.Windows.Forms.NodeLabelEditEventHandler(this.treeView1_BeforeLabelEdit);
             this.treeView1.AfterLabelEdit += new System.Windows.Forms.NodeLabelEditEventHandler(this.treeView1_AfterLabelEdit);
@@ -405,7 +405,7 @@
             this.searchResults.Location = new System.Drawing.Point(0, 26);
             this.searchResults.Name = "searchResults";
             this.searchResults.ShowItemToolTips = true;
-            this.searchResults.Size = new System.Drawing.Size(272, 414);
+            this.searchResults.Size = new System.Drawing.Size(278, 414);
             this.searchResults.TabIndex = 32;
             this.searchResults.UseCompatibleStateImageBehavior = false;
             this.searchResults.View = System.Windows.Forms.View.Details;
@@ -452,7 +452,7 @@
             this.searchBox.ForeColor = System.Drawing.Color.Gray;
             this.searchBox.Location = new System.Drawing.Point(0, 0);
             this.searchBox.Name = "searchBox";
-            this.searchBox.Size = new System.Drawing.Size(272, 23);
+            this.searchBox.Size = new System.Drawing.Size(278, 23);
             this.searchBox.TabIndex = 30;
             this.searchBox.Text = "Search Files...";
             this.searchBox.TextChanged += new System.EventHandler(this.searchBox_TextChanged);
@@ -495,7 +495,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.searchStatusLabel.Location = new System.Drawing.Point(0, 443);
             this.searchStatusLabel.Name = "searchStatusLabel";
-            this.searchStatusLabel.Size = new System.Drawing.Size(272, 15);
+            this.searchStatusLabel.Size = new System.Drawing.Size(278, 15);
             this.searchStatusLabel.TabIndex = 31;
             // 
             // importDialog

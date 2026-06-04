@@ -62,6 +62,10 @@ namespace psu_archive_explorer
             public string FullPath { get; set; }
         }
 
+        // Remembered splitter ratio (Panel1 width / total SplitContainer width).
+        // Initialised from the designer values; updated whenever the user drags.
+        private double _splitterRatio = 278.0 / 833.0;
+
         public MainForm()
         {
             InitializeComponent();
@@ -74,6 +78,21 @@ namespace psu_archive_explorer
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             this.MinimumSize = new Size(900, 600);
+
+            // Keep the splitter ratio and progress-area position in sync
+            // whenever the window is resized.
+            this.Resize += MainForm_Resize;
+            splitContainer1.SplitterMoved += SplitContainer1_SplitterMoved;
+
+            // SplitContainer doesn't expose DoubleBuffered publicly. Setting it
+            // via reflection stops the video-frame / button ghost that appears
+            // in the menu bar area when the window is maximised while an SFD
+            // is playing. This is a well-known WinForms workaround.
+            typeof(System.Windows.Forms.SplitContainer)
+                .GetProperty("DoubleBuffered",
+                    System.Reflection.BindingFlags.NonPublic |
+                    System.Reflection.BindingFlags.Instance)
+                ?.SetValue(splitContainer1, true);
 
             string indexPath = Path.Combine(
                 Path.GetDirectoryName(Application.ExecutablePath),
@@ -107,7 +126,10 @@ namespace psu_archive_explorer
 
             // Show welcome screen on first launch
             // It is torn down by HideWelcomeScreen() as soon as a file loads
-            this.Shown += (s, e) => ShowWelcomeScreen();
+            this.Shown += (s, e) => { ShowWelcomeScreen(); LayoutAfterSplitter(); };
+
+            // System tray icon
+            InitTrayIcon();
         }
 
         /// <summary>
@@ -225,5 +247,143 @@ namespace psu_archive_explorer
                 c.Dispose();
             }
         }
+
+        /// <summary>
+        /// Intercept WM_SIZE to detect maximize/restore transitions only.
+        /// On those specific transitions, briefly hide the SfdPreviewPanel
+        /// (if one is present) so its PictureBox can't paint into the
+        /// non-client area before the MenuStrip/toolbar have redrawn.
+        /// Normal resizing (dragging the window edge) is unaffected.
+        /// </summary>
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_SIZE = 0x0005;
+            const int SIZE_MAXIMIZED = 2;
+            const int SIZE_RESTORED = 0;
+
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_SIZE)
+            {
+                int sizeType = m.WParam.ToInt32();
+                if (sizeType == SIZE_MAXIMIZED || sizeType == SIZE_RESTORED)
+                {
+                    // Find the SfdPreviewPanel if one is currently in Panel2.
+                    var sfdPanel = splitContainer1.Panel2.Controls
+                        .OfType<SfdPreviewPanel>()
+                        .FirstOrDefault();
+                    if (sfdPanel != null)
+                    {
+                        // Force the entire form to repaint top-down cleanly
+                        // after maximize/restore so the video doesn't bleed
+                        // into the menu area.
+                        this.Invalidate(true);
+                        this.Update();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// When the user drags the splitter, remember the new ratio so that
+        /// subsequent window resizes keep the same proportional split.
+        /// </summary>
+        private void SplitContainer1_SplitterMoved(object sender, SplitterEventArgs e)
+        {
+            if (splitContainer1.Width > 0)
+                _splitterRatio = (double)splitContainer1.SplitterDistance / splitContainer1.Width;
+            LayoutAfterSplitter();
+        }
+
+        /// <summary>
+        /// On every window resize: restore the proportional splitter distance,
+        /// explicitly fill Panel1's children (WinForms anchor doesn't fire for
+        /// SplitterPanel children when SplitterDistance changes), and reposition
+        /// the progress label + bar above the right panel's left edge.
+        /// </summary>
+        private void MainForm_Resize(object sender, EventArgs e)
+        {
+            LayoutAfterSplitter();
+        }
+
+        /// <summary>
+        /// Central layout routine called both from Resize and SplitterMoved.
+        /// </summary>
+        private void LayoutAfterSplitter()
+        {
+            // --- Proportional splitter ---
+            int minTotal = splitContainer1.Panel1MinSize
+                         + splitContainer1.Panel2MinSize
+                         + splitContainer1.SplitterWidth;
+            if (splitContainer1.Width > minTotal)
+            {
+                int newDist = (int)Math.Round(_splitterRatio * splitContainer1.Width);
+                newDist = Math.Max(splitContainer1.Panel1MinSize,
+                          Math.Min(newDist, splitContainer1.Width
+                                            - splitContainer1.Panel2MinSize
+                                            - splitContainer1.SplitterWidth));
+                // Only assign if it actually changed to avoid recursion
+                if (splitContainer1.SplitterDistance != newDist)
+                    splitContainer1.SplitterDistance = newDist;
+            }
+
+            // --- Panel1 children ---
+            // WinForms does NOT reflow anchor-based children inside a SplitterPanel
+            // when SplitterDistance changes (Panel1 resizes but no Layout event
+            // fires for its children). We have to do it explicitly.
+            int p1w = splitContainer1.Panel1.Width;
+            int p1h = splitContainer1.Panel1.Height;
+
+            // searchBox and searchModeCombo share the top row.
+            // When the combo is visible it sits to the right of the search box;
+            // the search box takes the remaining width.
+            if (searchModeCombo.Visible)
+            {
+                const int gap = 4;
+                searchBox.Width = p1w - searchModeCombo.Width - gap;
+                searchModeCombo.Left = searchBox.Right + gap;
+                searchModeCombo.Top = searchBox.Top;
+            }
+            else
+            {
+                searchBox.Width = p1w;
+            }
+
+            // treeView fills from row 1 to near the bottom
+            treeView1.Width = p1w;
+            treeView1.Height = Math.Max(10, p1h - treeView1.Top - 1);
+
+            // searchResults overlays the treeView exactly
+            searchResults.Width = p1w;
+            searchResults.Height = treeView1.Height;
+
+            // searchStatusLabel at the very bottom, full width
+            searchStatusLabel.Width = p1w;
+            searchStatusLabel.Top = p1h - searchStatusLabel.Height;
+
+            // --- Progress label and bar ---
+            // Align them above the right panel's left edge.
+            int progressX = splitContainer1.Left
+                          + splitContainer1.SplitterDistance
+                          + splitContainer1.SplitterWidth
+                          + 1;
+            progressStatusLabel.Left = progressX;
+            actionProgressBar.Left = progressX;
+        }
+    }
+
+    internal static class NativeMethods
+    {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        internal static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        internal static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        internal static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        internal static extern bool SetForegroundWindow(IntPtr hWnd);
     }
 }

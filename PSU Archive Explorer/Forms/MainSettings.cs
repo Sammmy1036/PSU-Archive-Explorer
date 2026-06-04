@@ -31,19 +31,7 @@ namespace psu_archive_explorer
             gameDirectoryTextBox.SelectionStart = 0;
             gameDirectoryTextBox.SelectionLength = 0;
 
-            // 
-            // ExportDAT2WAVCheckBox
-            // 
-            this.ExportDAT2WAVCheckBox.AutoSize = true;
-            this.ExportDAT2WAVCheckBox.Location = new System.Drawing.Point(12, 120);
-            this.ExportDAT2WAVCheckBox.Name = "ExportDAT2WAVCheckBox";
-            this.ExportDAT2WAVCheckBox.Size = new System.Drawing.Size(160, 17);
-            this.ExportDAT2WAVCheckBox.TabIndex = 11;
-            this.ExportDAT2WAVCheckBox.Text = "Export DAT to WAV";
-            this.ExportDAT2WAVCheckBox.UseVisualStyleBackColor = true;
-            this.ExportDAT2WAVCheckBox.CheckedChanged += new System.EventHandler(this.ExportDAT2WAVCheckBox_CheckedChanged);
-
-            this.StartPosition = FormStartPosition.CenterScreen;
+            this.StartPosition = FormStartPosition.Manual;
             this.MinimumSize = new Size(248, 470);
             this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
@@ -141,6 +129,42 @@ namespace psu_archive_explorer
                 if (dlg.ShowDialog() != CommonFileDialogResult.Ok) return;
 
                 string selected = dlg.FileName;
+
+                // Smart adjustment: if the user selected the 'data' subfolder
+                // instead of the game root, walk up one level automatically.
+                // CommonOpenFileDialog can return paths with or without trailing
+                // separators so we check both the raw string and DirectoryInfo.
+                try
+                {
+                    string trimmed = selected.TrimEnd(
+                        System.IO.Path.DirectorySeparatorChar,
+                        System.IO.Path.AltDirectorySeparatorChar);
+
+                    string lastName = System.IO.Path.GetFileName(trimmed);
+                    if (string.IsNullOrEmpty(lastName))
+                    {
+                        // Edge case: root drive selected, GetFileName returns ""
+                        var di2 = new DirectoryInfo(trimmed);
+                        lastName = di2.Name;
+                    }
+
+                    if (string.Equals(lastName, "data", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string parent = System.IO.Path.GetDirectoryName(trimmed);
+                        if (!string.IsNullOrEmpty(parent))
+                        {
+                            selected = parent;
+                            MessageBox.Show(
+                                $"It looks like you selected the 'data' subfolder.\n\n" +
+                                $"Automatically adjusted to the game root:\n{selected}",
+                                "Game Directory Auto-Adjusted",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                        }
+                    }
+                }
+                catch { /* leave selected as-is if detection fails */ }
+
                 string dataFolder = Path.Combine(selected, "data");
 
                 if (!Directory.Exists(dataFolder))

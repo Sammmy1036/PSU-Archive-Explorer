@@ -57,9 +57,9 @@
             this.ExportPNGCheckBox.AutoSize = true;
             this.ExportPNGCheckBox.Checked = true;
             this.ExportPNGCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.ExportPNGCheckBox.Location = new System.Drawing.Point(12, 12);
+            this.ExportPNGCheckBox.Location = new System.Drawing.Point(15, 61);
             this.ExportPNGCheckBox.Name = "ExportPNGCheckBox";
-            this.ExportPNGCheckBox.Size = new System.Drawing.Size(171, 17);
+            this.ExportPNGCheckBox.Size = new System.Drawing.Size(169, 17);
             this.ExportPNGCheckBox.TabIndex = 2;
             this.ExportPNGCheckBox.Text = "Batch Export Textures to PNG";
             this.ExportPNGCheckBox.UseVisualStyleBackColor = true;
@@ -67,7 +67,7 @@
             // 
             // ExportWAVCheckBox
             // 
-            this.ExportWAVCheckBox.Location = new System.Drawing.Point(12, 95);
+            this.ExportWAVCheckBox.Location = new System.Drawing.Point(15, 167);
             this.ExportWAVCheckBox.Name = "ExportWAVCheckBox";
             this.ExportWAVCheckBox.Size = new System.Drawing.Size(140, 24);
             this.ExportWAVCheckBox.TabIndex = 10;
@@ -78,7 +78,7 @@
             // exportMetaDataCheckBox
             // 
             this.exportMetaDataCheckBox.AutoSize = true;
-            this.exportMetaDataCheckBox.Location = new System.Drawing.Point(12, 77);
+            this.exportMetaDataCheckBox.Location = new System.Drawing.Point(15, 142);
             this.exportMetaDataCheckBox.Name = "exportMetaDataCheckBox";
             this.exportMetaDataCheckBox.Size = new System.Drawing.Size(109, 17);
             this.exportMetaDataCheckBox.TabIndex = 5;
@@ -89,7 +89,7 @@
             // BatchExportSubContainersCheckBox
             // 
             this.BatchExportSubContainersCheckBox.AutoSize = true;
-            this.BatchExportSubContainersCheckBox.Location = new System.Drawing.Point(12, 35);
+            this.BatchExportSubContainersCheckBox.Location = new System.Drawing.Point(15, 88);
             this.BatchExportSubContainersCheckBox.Name = "BatchExportSubContainersCheckBox";
             this.BatchExportSubContainersCheckBox.Size = new System.Drawing.Size(198, 17);
             this.BatchExportSubContainersCheckBox.TabIndex = 6;
@@ -102,7 +102,7 @@
             this.BatchExportSubDirectoriesCheckBox.AutoSize = true;
             this.BatchExportSubDirectoriesCheckBox.Checked = true;
             this.BatchExportSubDirectoriesCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.BatchExportSubDirectoriesCheckBox.Location = new System.Drawing.Point(12, 56);
+            this.BatchExportSubDirectoriesCheckBox.Location = new System.Drawing.Point(15, 115);
             this.BatchExportSubDirectoriesCheckBox.Name = "BatchExportSubDirectoriesCheckBox";
             this.BatchExportSubDirectoriesCheckBox.Size = new System.Drawing.Size(173, 17);
             this.BatchExportSubDirectoriesCheckBox.TabIndex = 7;
@@ -112,7 +112,7 @@
             // 
             // nblSettingsGroupBox
             // 
-            this.nblSettingsGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.nblSettingsGroupBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.nblSettingsGroupBox.Controls.Add(this.tmllChunkGroupBox);
             this.nblSettingsGroupBox.Controls.Add(this.groupBox1);
@@ -216,7 +216,7 @@
             // 
             // ExportDAT2WAVCheckBox
             // 
-            this.ExportDAT2WAVCheckBox.Location = new System.Drawing.Point(12, 118);
+            this.ExportDAT2WAVCheckBox.Location = new System.Drawing.Point(15, 196);
             this.ExportDAT2WAVCheckBox.Name = "ExportDAT2WAVCheckBox";
             this.ExportDAT2WAVCheckBox.Size = new System.Drawing.Size(127, 24);
             this.ExportDAT2WAVCheckBox.TabIndex = 0;
@@ -226,15 +226,15 @@
             // gameDirectoryLabel
             // 
             this.gameDirectoryLabel.AutoSize = true;
-            this.gameDirectoryLabel.Location = new System.Drawing.Point(12, 145);
+            this.gameDirectoryLabel.Location = new System.Drawing.Point(9, 34);
             this.gameDirectoryLabel.Name = "gameDirectoryLabel";
-            this.gameDirectoryLabel.Size = new System.Drawing.Size(79, 13);
+            this.gameDirectoryLabel.Size = new System.Drawing.Size(80, 13);
             this.gameDirectoryLabel.TabIndex = 20;
             this.gameDirectoryLabel.Text = "Game Directory";
             // 
             // gameDirectoryTextBox
             // 
-            this.gameDirectoryTextBox.Location = new System.Drawing.Point(12, 161);
+            this.gameDirectoryTextBox.Location = new System.Drawing.Point(2, 6);
             this.gameDirectoryTextBox.Name = "gameDirectoryTextBox";
             this.gameDirectoryTextBox.ReadOnly = true;
             this.gameDirectoryTextBox.Size = new System.Drawing.Size(211, 20);
@@ -242,7 +242,7 @@
             // 
             // gameDirectoryBrowseButton
             // 
-            this.gameDirectoryBrowseButton.Location = new System.Drawing.Point(148, 185);
+            this.gameDirectoryBrowseButton.Location = new System.Drawing.Point(138, 29);
             this.gameDirectoryBrowseButton.Name = "gameDirectoryBrowseButton";
             this.gameDirectoryBrowseButton.Size = new System.Drawing.Size(75, 22);
             this.gameDirectoryBrowseButton.TabIndex = 22;

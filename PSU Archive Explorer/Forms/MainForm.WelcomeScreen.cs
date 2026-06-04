@@ -143,7 +143,7 @@ namespace psu_archive_explorer
 
             var titleLabel = new Label
             {
-                Text = "PSU Archive Explorer v1.0.0.2",
+                Text = "PSU Archive Explorer v1.0.0.3",
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
                 ForeColor = SystemColors.ControlText,
                 AutoSize = true,

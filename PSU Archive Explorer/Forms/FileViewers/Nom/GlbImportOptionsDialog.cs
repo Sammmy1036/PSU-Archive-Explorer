@@ -134,7 +134,6 @@ namespace psu_archive_explorer.Forms.FileViewers
                     ChosenFrameRate = originalRate;
             };
 
-            // Fixed size — y is now the exact total height needed.
             ClientSize = new System.Drawing.Size(FormWidth, y);
 
             // All controls are children of the form itself, so the two radios

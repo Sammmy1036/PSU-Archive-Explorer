@@ -21,7 +21,9 @@ namespace psu_archive_explorer
     public class SfdPreviewPanel : UserControl
     {
         // ---- UI ----
-        private PictureBox _pictureBox;
+        // VideoPanel is an owner-drawn surface that never touches PictureBox.Image,
+        // avoiding the PictureBox → ImageAnimator → CanAnimate crash on raw bitmaps.
+        private VideoPanel _videoPanel;
         private Panel _controlBar;
         private Button _btnPlay;
         private Button _btnStop;
@@ -57,21 +59,33 @@ namespace psu_archive_explorer
         // ==================================================================
         // UI construction
         // ==================================================================
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_WINDOWPOSCHANGED = 0x0047;
+            base.WndProc(ref m);
+            // After any resize/maximize/restore, ask the video surface to
+            // repaint — it will redraw its cached last frame automatically.
+            if (m.Msg == WM_WINDOWPOSCHANGED)
+                _videoPanel?.Invalidate();
+        }
+
         private void InitializeControls()
         {
             this.Dock = DockStyle.Fill;
             this.BackColor = Color.FromArgb(229, 229, 229);
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.OptimizedDoubleBuffer |
+                          ControlStyles.AllPaintingInWmPaint, true);
+            this.UpdateStyles();
 
-            // Video surface
-            _pictureBox = new PictureBox
+            _videoPanel = new VideoPanel
             {
                 Dock = DockStyle.Fill,
-                SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.Black
             };
 
-            // Bottom control bar — fixed height, hosts buttons + seek + time
-            _controlBar = new Panel
+            _controlBar = new DoubleBufferedPanel
             {
                 Dock = DockStyle.Bottom,
                 Height = 80,
@@ -108,6 +122,7 @@ namespace psu_archive_explorer
             {
                 Location = new Point(12, 44),
                 Width = 500,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
                 Minimum = 0,
                 Maximum = 100,
                 TickStyle = TickStyle.None,
@@ -129,8 +144,94 @@ namespace psu_archive_explorer
             _controlBar.Controls.Add(_seekBar);
             _controlBar.Controls.Add(_timeLabel);
 
-            this.Controls.Add(_pictureBox);
+            this.Controls.Add(_videoPanel);
             this.Controls.Add(_controlBar);
+
+            _controlBar.SizeChanged += (s, e) =>
+            {
+                int newW = _controlBar.Width - _seekBar.Left - 12;
+                if (newW > 20) _seekBar.Width = newW;
+            };
+        }
+
+        // ------------------------------------------------------------------
+        // Inner UI helpers
+        // ------------------------------------------------------------------
+
+        private class DoubleBufferedPanel : Panel
+        {
+            public DoubleBufferedPanel() { this.DoubleBuffered = true; }
+        }
+
+        /// <summary>
+        /// Owner-drawn video surface. Paints the current frame letter-boxed
+        /// over a black background using GDI+ DrawImage. This completely
+        /// bypasses PictureBox.InstallNewImage / ImageAnimator.CanAnimate,
+        /// which throws "Parameter is not valid" on raw MPEG-1 Bitmaps.
+        /// Also means no frame suppression is needed during resize — the
+        /// panel simply repaints whatever frame it last received, so the
+        /// decode thread's timing clock never drifts when going fullscreen.
+        /// </summary>
+        private class VideoPanel : Panel
+        {
+            private Bitmap _frame;
+            private readonly object _frameLock = new object();
+
+            public VideoPanel()
+            {
+                this.DoubleBuffered = true;
+                this.SetStyle(ControlStyles.OptimizedDoubleBuffer |
+                              ControlStyles.AllPaintingInWmPaint |
+                              ControlStyles.UserPaint, true);
+                this.UpdateStyles();
+            }
+
+            /// <summary>
+            /// Replaces the displayed frame and triggers a repaint.
+            /// Must be called on the UI thread. Takes ownership of <paramref name="bmp"/>
+            /// and disposes the previous frame. Pass null to clear the surface.
+            /// </summary>
+            public void SetFrame(Bitmap bmp)
+            {
+                Bitmap old;
+                lock (_frameLock)
+                {
+                    old = _frame;
+                    _frame = bmp;
+                }
+                old?.Dispose();
+                Invalidate();
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                Bitmap frame;
+                lock (_frameLock) frame = _frame;
+
+                e.Graphics.Clear(Color.Black);
+                if (frame == null) return;
+
+                // Letter-box: scale uniformly to fit, centred.
+                float scaleX = (float)ClientSize.Width / frame.Width;
+                float scaleY = (float)ClientSize.Height / frame.Height;
+                float scale = Math.Min(scaleX, scaleY);
+
+                int drawW = (int)(frame.Width * scale);
+                int drawH = (int)(frame.Height * scale);
+                int drawX = (ClientSize.Width - drawW) / 2;
+                int drawY = (ClientSize.Height - drawH) / 2;
+
+                // HighQualityBilinear is a good balance: noticeably sharper
+                // than NearestNeighbor at fullscreen, and fast enough for
+                // real-time playback now that ShowFrame uses synchronous Invoke.
+                // HighQualityBicubic would look slightly better but risks frame
+                // drops on slower machines due to the extra per-pixel cost.
+                e.Graphics.InterpolationMode =
+                    System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                e.Graphics.PixelOffsetMode =
+                    System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                e.Graphics.DrawImage(frame, drawX, drawY, drawW, drawH);
+            }
         }
 
         // ==================================================================
@@ -332,7 +433,7 @@ namespace psu_archive_explorer
                     {
                         Thread.Sleep((int)Math.Min(deltaMs, 50));
                     }
-                    else if (deltaMs < -frameIntervalMs * 2)
+                    else if (deltaMs < -frameIntervalMs * 4)
                     {
                         if (!showedWhilePaused) frame.Dispose();
                         framesDropped++;
@@ -401,18 +502,29 @@ namespace psu_archive_explorer
         // ==================================================================
         // UI helpers (thread-safe)
         // ==================================================================
+
+        /// <summary>
+        /// Pushes a decoded frame to the video surface on the UI thread.
+        /// Calls VideoPanel.SetFrame() which owner-draws via OnPaint, completely
+        /// bypassing PictureBox.InstallNewImage / ImageAnimator (the source of
+        /// the "Parameter is not valid" crash on raw MPEG-1 bitmaps).
+        /// No frame suppression during resize — VideoPanel repaints its cached
+        /// frame on any Invalidate(), so the decode clock never drifts.
+        /// </summary>
         private void ShowFrame(Bitmap bmp)
         {
+            // Use synchronous Invoke (not BeginInvoke) so the decode thread
+            // blocks until the frame is actually painted before advancing.
+            // Without this, at fullscreen the UI message queue fills up with
+            // pending SetFrame calls faster than GDI+ can paint them, the
+            // timing clock sees a growing deficit, and the drop condition
+            // (deltaMs < -2 frames) triggers — halving the apparent framerate.
             try
             {
-                InvokeSafe(() =>
-                {
-                    var old = _pictureBox.Image;
-                    _pictureBox.Image = bmp;
-                    old?.Dispose();
-                });
+                if (!IsDisposed && IsHandleCreated)
+                    Invoke((Action)(() => _videoPanel.SetFrame(bmp)));
             }
-            catch { try { bmp.Dispose(); } catch { } }
+            catch { try { bmp?.Dispose(); } catch { } }
         }
 
         private void UpdateProgress(int frameCount)
@@ -606,13 +718,8 @@ namespace psu_archive_explorer
                 _stopped = true;
                 DisposeAudio();
 
-                try
-                {
-                    var img = _pictureBox?.Image;
-                    if (_pictureBox != null) _pictureBox.Image = null;
-                    img?.Dispose();
-                }
-                catch { }
+                // Clear the video surface (also disposes its internal frame bitmap).
+                try { _videoPanel?.SetFrame(null); } catch { }
 
                 _sfdBytes = null;
             }
