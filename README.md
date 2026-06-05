@@ -10,7 +10,7 @@
   <strong><a href="https://github.com/Sammmy1036/PSU-Archive-Explorer/releases" style="font-size: 1.3em;">⬇️ Download Latest Release</a></strong>
 </p>
 
-## PSU Archive Explorer is a tool for browsing, extracting, and editing files from Phantasy Star Universe (PSU) game archives. It supports NBL, AFS, MiniAFS, ADX, BIN, DAT, REL, K, NOM, SFD, PSO, VSO, XNA, XNCP, XNCF, XNJ, XNM, XNR, XNT, and XVR file formats, with built-in preview for audio, video, and animation files.
+## PSU Archive Explorer is a tool for browsing, extracting, and editing files from Phantasy Star Universe (PSU) game archives. It supports NBL, AFS, MiniAFS, ADX, BIN, DAT, REL, K, NOM, RIPC, SFD, PSO, VSO, XNA, XNCP, XNCF, XNJ, XNM, XNR, XNT, and XVR file formats, with built-in preview for audio, video, and animation files.
 
 ## What's Changed
 
@@ -78,6 +78,10 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Updated C# language to 7.3
 - Updated PSULib to now support multiple new file formats
 
+### Upcoming Features
+RIPC texture viewer with live palette editing, zoom, import/export (PNG, BMP, ACT), and clipboard support
+<img src="Images/RIPC Preview.png" width="800">
+
 ## How to Use the PSU Archive Explorer
 
 Phantasy Star Universe stores most game data inside the **DATA** folder.  
@@ -91,7 +95,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | Extension | Description |
 |-----------|:------------|
 | **ADX**   | Sound files (music, sound effects, voice acting) |
-| **BIN**   | Text files and scripts (dialogue, menus, item descriptions, mission/enemy scripts). Often paired with **.k** files. |
+| **BIN**   | Text files and scripts (dialogue, menus, item descriptions, mission/enemy scripts, raster images). Often paired with **.k** files. |
 | **DAT**   | General binary containers/archives (can contain almost anything) |
 | **REL**   | Object and mission layout files (places enemies, props, triggers, etc.) |
 | **K**     | Text/string files (alternative to .bin for localization and UI strings) |
@@ -116,6 +120,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 - **Agrathejagged** — Tenora Works, documentation, and the general footing for all things modding for PSU
 - **VGStream** - KC for PSU AOTI
 - **Clementine Team** - Reviving and keeping the game running
+- **breakie0** - Research into .bin textures
 
 ## Included Third-Party Code & Dependencies
 - **Costura.Fody** from Geert van Horrik & Simon Cropp - https://github.com/Fody/Costura
