@@ -121,6 +121,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 - **VGStream** - KC for PSU AOTI
 - **Clementine Team** - Reviving and keeping the game running
 - **breakie0** - Research into .bin textures
+- **Shadowth117** - Research into .nom animations
 
 ## Included Third-Party Code & Dependencies
 - **Costura.Fody** from Geert van Horrik & Simon Cropp - https://github.com/Fody/Costura
