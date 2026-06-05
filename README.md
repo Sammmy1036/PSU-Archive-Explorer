@@ -125,6 +125,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 
 ## Included Third-Party Code & Dependencies
 - **Costura.Fody** from Geert van Horrik & Simon Cropp - https://github.com/Fody/Costura
+- **FFMPEG** from FFMPEG Team - https://github.com/ffmpeg/ffmpeg
 - **Fody** from The Fody Team - https://github.com/Fody/Fody
 - **GIMSharp from Puyo Tools** - https://github.com/nickworonekin/puyotools
 - **NAudio**: Allows sampling of ADPCM data - https://github.com/naudio/naudio
