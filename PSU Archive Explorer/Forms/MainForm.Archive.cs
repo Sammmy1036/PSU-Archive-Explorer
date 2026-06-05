@@ -32,81 +32,318 @@ namespace psu_archive_explorer
 {
     public partial class MainForm : Form
     {
+        private class NodeBlueprint
+        {
+            public string Text;
+            public string FileName;
+            public ContainerFile OwnerContainer;
+            public Color ForeColor = Color.Empty;
+            public bool UseNblContextMenu;
+            public List<NodeBlueprint> Children = new List<NodeBlueprint>();
+        }
+
+        private List<NodeBlueprint> BuildNodeBlueprints(ContainerFile toRead)
+        {
+            var result = new List<NodeBlueprint>();
+            List<string> filenames = toRead.getFilenames();
+
+            for (int i = 0; i < filenames.Count; i++)
+            {
+                string filename = filenames[i];
+                var bp = new NodeBlueprint
+                {
+                    FileName = filename,
+                    Text = filename,
+                    OwnerContainer = toRead,
+                    UseNblContextMenu = toRead is NblLoader,
+                };
+
+                if (toRead is AfsLoader || toRead is NblLoader || toRead is MiniAfsLoader)
+                {
+                    PsuFile child = toRead.getFileParsed(i);
+
+                    if (child is NblLoader
+                        && !filename.EndsWith(".nbl", StringComparison.OrdinalIgnoreCase))
+                    {
+                        bp.Text = StripPartialNblSuffix(filename) + ".nbl";
+                    }
+
+                    if (child is ContainerFile childContainer)
+                    {
+                        if (childContainer.Compressed)
+                            bp.ForeColor = Color.Green;
+
+                        if (toRead is NblLoader)
+                        {
+                            if (childContainer is NblChunk nblChunk &&
+                                (nblChunk.chunkID == "NMLL" ||
+                                 nblChunk.chunkID == "TMLL" ||
+                                 filename.EndsWith(".nbl", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                bp.Children = BuildNodeBlueprints(childContainer);
+                            }
+                        }
+                        else
+                        {
+                            bp.Children = BuildNodeBlueprints(childContainer);
+                        }
+                    }
+                }
+                else
+                {
+                    RawFile raw = toRead.getFileRaw(i);
+                    if (filename.EndsWith(".nbl") ||
+                        raw.fileheader == "NMLL" ||
+                        raw.fileheader == "TMLL")
+                    {
+                        ContainerFile parsed = (ContainerFile)toRead.getFileParsed(i);
+                        bp.Children = BuildNodeBlueprints(parsed);
+                        if (parsed.Compressed)
+                            bp.ForeColor = Color.Green;
+                    }
+                }
+
+                result.Add(bp);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Creates TreeNode objects from a pre-built NodeBlueprint list.
+        /// Must be called on the UI thread, but does no getFileParsed calls
+        /// so it completes almost instantly even for thousands of nodes.
+        /// </summary>
+        private void ApplyNodeBlueprints(TreeNodeCollection target,
+                                          List<NodeBlueprint> blueprints)
+        {
+            foreach (var bp in blueprints)
+            {
+                var node = new TreeNode(bp.Text)
+                {
+                    Tag = new FileTreeNodeTag
+                    {
+                        OwnerContainer = bp.OwnerContainer,
+                        FileName = bp.FileName,
+                    },
+                    ContextMenuStrip = bp.UseNblContextMenu
+                        ? nblChunkContextMenuStrip
+                        : arbitraryFileContextMenuStrip,
+                };
+ 
+                if (bp.ForeColor != Color.Empty)
+                    node.ForeColor = bp.ForeColor;
+ 
+                if (bp.Children.Count > 0)
+                    ApplyNodeBlueprints(node.Nodes, bp.Children);
+ 
+                target.Add(node);
+            }
+        }
+ 
         private bool openPSUArchive(string fileName, TreeNodeCollection treeNodeCollection)
         {
             bool isValidArchive = false;
             byte[] formatName = new byte[4];
-
-            treeView1.BeginUpdate();
-            try
+            long fileSize = 0;
+ 
+            // Probe — read magic bytes and file size before touching any UI.
+            using (Stream probeStream = File.Open(fileName, FileMode.Open))
             {
-                using (Stream stream = File.Open(fileName, FileMode.Open))
+                int read = probeStream.Read(formatName, 0, 4);
+                if (read < 4) return false;
+                fileSize = probeStream.Length;
+            }
+ 
+            string identifier = Encoding.ASCII.GetString(formatName, 0, 4);
+            short shortId = BitConverter.ToInt16(formatName, 0);
+ 
+            bool isNmll = identifier == "NMLL" || identifier == "NMLB";
+            bool isAfs  = identifier == "AFS\0";
+            bool isMini = shortId == 0x50AF;
+ 
+            if (!isNmll && !isAfs && !isMini)
+                return false;
+ 
+            // Files under 100 MB always load fast enough to do synchronously
+            // with no noticeable freeze. Large files (e.g. clothing texture
+            // archives with thousands of NBL children) use a background thread
+            // so the UI stays responsive during the parse.
+            const long ASYNC_THRESHOLD = 100L * 1024 * 1024; // 100 MB
+ 
+            if (fileSize < ASYNC_THRESHOLD)
+            {
+                // ---- Synchronous path (original behaviour, unchanged) ----
+                treeView1.BeginUpdate();
+                try
                 {
-                    int headerBytesRead = stream.Read(formatName, 0, 4);
-                    if (headerBytesRead < 4)
+                    using (Stream stream = File.Open(fileName, FileMode.Open))
                     {
-                        return false;
-                    }
-
-                    string identifier = Encoding.ASCII.GetString(formatName, 0, 4);
-                    if (identifier == "NMLL" || identifier == "NMLB")
-                    {
-                        setAFSEnabled(false);
-                        treeNodeCollection.Clear();
-                        loadedContainer = new NblLoader(stream);
-                        ClearRightPanel();
-                        addChildFiles(treeNodeCollection, loadedContainer);
-                        compressNMLL = loadedContainer.Compressed;
-                        compressTMLL = loadedContainer.getFilenames().Count > 1 && ((NblChunk)loadedContainer.getFileParsed(1)).Compressed;
-                        isValidArchive = true;
-                    }
-                    else if (identifier == "AFS\0")
-                    {
-                        setAFSEnabled(true);
-                        treeNodeCollection.Clear();
-                        loadedContainer = new AfsLoader(stream);
-                        ClearRightPanel();
-                        addChildFiles(treeNodeCollection, loadedContainer);
-                        isValidArchive = true;
-
-                        // If the AFS is purely audio/video (every entry is .adx
-                        // or .sfd), the toolbar's edit operations (Set Quest /
-                        // Add File / Set Zone / Add Zone / Zone selector) don't
-                        // apply — those are meaningful only against a real game
-                        // AFS containing zones and quest data. Downgrade the
-                        // enabled state we just set so the user doesn't see
-                        // clickable buttons that would corrupt the file.
-                        //
-                        // Filename-only check (no content sniffing) because
-                        // large audio AFS containers can have hundreds of
-                        // entries and we don't want to pay a per-entry byte
-                        // read on archive open. Hash-named ADX/SFD entries
-                        // without an extension would slip through, but real
-                        // AFS files in this game use proper filenames inside.
-                        if (IsAllAdxOrSfdAfs(loadedContainer))
+                        if (isNmll)
                         {
                             setAFSEnabled(false);
+                            treeNodeCollection.Clear();
+                            loadedContainer = new NblLoader(stream);
+                            ClearRightPanel();
+                            addChildFiles(treeNodeCollection, loadedContainer);
+                            compressNMLL = loadedContainer.Compressed;
+                            compressTMLL = loadedContainer.getFilenames().Count > 1
+                                && ((NblChunk)loadedContainer.getFileParsed(1)).Compressed;
+                            isValidArchive = true;
+                        }
+                        else if (isAfs)
+                        {
+                            setAFSEnabled(true);
+                            treeNodeCollection.Clear();
+                            loadedContainer = new AfsLoader(stream);
+                            ClearRightPanel();
+                            addChildFiles(treeNodeCollection, loadedContainer);
+                            isValidArchive = true;
+ 
+                            // If the AFS is purely audio/video (every entry is .adx
+                            // or .sfd), the toolbar's edit operations (Set Quest /
+                            // Add File / Set Zone / Add Zone / Zone selector) don't
+                            // apply — those are meaningful only against a real game
+                            // AFS containing zones and quest data. Downgrade the
+                            // enabled state we just set so the user doesn't see
+                            // clickable buttons that would corrupt the file.
+                            //
+                            // Filename-only check (no content sniffing) because
+                            // large audio AFS containers can have hundreds of
+                            // entries and we don't want to pay a per-entry byte
+                            // read on archive open. Hash-named ADX/SFD entries
+                            // without an extension would slip through, but real
+                            // AFS files in this game use proper filenames inside.
+                            if (IsAllAdxOrSfdAfs(loadedContainer))
+                            {
+                                setAFSEnabled(false);
+                            }
+                        }
+                        else if (isMini)
+                        {
+                            setAFSEnabled(false);
+                            treeNodeCollection.Clear();
+                            loadedContainer = new MiniAfsLoader(stream);
+                            ClearRightPanel();
+                            addChildFiles(treeNodeCollection, loadedContainer);
+                            isValidArchive = true;
                         }
                     }
-                    else if (BitConverter.ToInt16(formatName, 0) == 0x50AF)
-                    {
-                        setAFSEnabled(false);
-                        treeNodeCollection.Clear();
-                        loadedContainer = new MiniAfsLoader(stream);
-                        ClearRightPanel();
-                        addChildFiles(treeNodeCollection, loadedContainer);
-                        isValidArchive = true;
-                    }
                 }
+                finally
+                {
+                    treeView1.EndUpdate();
+                }
+ 
+                return isValidArchive;
             }
-            finally
+ 
+            // ---- Async path for large files ----
+            // Clear the tree immediately so old contents don't ghost,
+            // then show a loading panel before kicking off the background parse.
+            treeView1.BeginUpdate();
+            treeNodeCollection.Clear();
+            treeView1.EndUpdate();
+ 
+            ClearRightPanel();
+            BuildCenteredInfoPanel(
+                "Loading...",
+                "Parsing " + Path.GetFileName(fileName) + "\u2026\n\n" +
+                "Large archives may take a few seconds.");
+ 
+            // Disable interactive controls while loading so the user can't
+            // trigger another open or click tree nodes mid-parse.
+            treeView1.Enabled = false;
+            menuStrip1.Enabled = false;
+
+            _ = Task.Run(() =>
             {
-                treeView1.EndUpdate();
-            }
+                ContainerFile container = null;
+                bool afsEnabled = false;
+                bool nmllCompressed = false;
+                bool tmllCompressed = false;
+                List<NodeBlueprint> blueprints = null;
+                Exception parseError = null;
 
-            return isValidArchive;
+                try
+                {
+                    using (Stream stream = File.Open(fileName, FileMode.Open))
+                    {
+                        if (isNmll)
+                        {
+                            var nbl = new NblLoader(stream);
+                            nmllCompressed = nbl.Compressed;
+                            tmllCompressed = nbl.getFilenames().Count > 1
+                                && ((NblChunk)nbl.getFileParsed(1)).Compressed;
+                            container = nbl;
+                            afsEnabled = false;
+                        }
+                        else if (isAfs)
+                        {
+                            var afs = new AfsLoader(stream);
+                            afsEnabled = !IsAllAdxOrSfdAfs(afs);
+                            container = afs;
+                        }
+                        else if (isMini)
+                        {
+                            container = new MiniAfsLoader(stream);
+                            afsEnabled = false;
+                        }
+                    }
+
+                    // Build blueprints on the background thread now that getFileRaw
+                    // is no longer called on NblLoader (which throws). All getFileParsed
+                    // calls here are on already-loaded in-memory data so they are
+                    // thread-safe reads with no disk I/O.
+                    blueprints = BuildNodeBlueprints(container);
+                }
+                catch (Exception ex)
+                {
+                    parseError = ex;
+                }
+
+                this.Invoke((Action)(() =>
+                {
+                    treeView1.Enabled = true;
+                    menuStrip1.Enabled = true;
+
+                    if (parseError != null)
+                    {
+                        ClearRightPanel();
+                        BuildCenteredInfoPanel("Could not open archive", parseError.Message);
+                        return;
+                    }
+
+                    loadedContainer = container;
+                    setAFSEnabled(afsEnabled);
+
+                    if (isNmll)
+                    {
+                        compressNMLL = nmllCompressed;
+                        compressTMLL = tmllCompressed;
+                    }
+
+                    // ApplyNodeBlueprints only creates TreeNode objects from
+                    // pre-built data — no getFileParsed calls — so this is fast
+                    // and the UI thread is only blocked for a moment.
+                    treeView1.BeginUpdate();
+                    ApplyNodeBlueprints(treeNodeCollection, blueprints);
+                    treeView1.EndUpdate();
+
+                    ClearRightPanel();
+                    ResetContainerSearchIfActive();
+                    UpdateContainerModeVisibility(true);
+                }));
+            });
+
+            // Return true immediately — format was recognised and async load
+            // has started. The caller's ResetContainerSearchIfActive() and
+            // UpdateContainerModeVisibility() will also run here on the still-
+            // empty tree, which is harmless since they run again inside Invoke
+            // above once the load actually completes.
+            return true;
         }
-
+ 
         private void setAFSEnabled(bool isActive)
         {
             zoneUD.Enabled = isActive;

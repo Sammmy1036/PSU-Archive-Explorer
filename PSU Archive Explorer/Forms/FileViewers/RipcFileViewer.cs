@@ -591,67 +591,70 @@ namespace psu_archive_explorer.FileViewers
         private static string GuessFeatureType(string filename)
         {
             string f = filename.ToLowerInvariant();
-            if (f.Contains("eye") && !f.Contains("brow") && !f.Contains("lash")) return "Eye iris";
-            if (f.Contains("eyebrow") || f.Contains("brow")) return "Eyebrow";
-            if (f.Contains("eyelash") || f.Contains("lash")) return "Eyelash";
-            if (f.Contains("lip")) return "Lip";
-            if (f.Contains("skin") || f.Contains("face")) return "Skin / face";
-            if (f.Contains("xnf") || f.Contains("xng")) return "Face preset (RIPC)";
-            return "Face feature";
+
+            // Body part segment codes (PSU naming convention: m0_upp_, f0_low_, etc.)
+            if (f.Contains("_upp_")) return "Upper body texture";
+            if (f.Contains("_low_")) return "Lower body texture";
+            if (f.Contains("_arm_") || f.Contains("_glv_")) return "Arm / Glove texture";
+            if (f.Contains("_leg_") || f.Contains("_sho_") || f.Contains("_bot_")) return "Leg / Feet texture";
+            if (f.Contains("_hed_") || f.Contains("_hat_") || f.Contains("_cap_")) return "Head / Hat texture";
+            if (f.Contains("_bdy_")) return "Body texture";
+            if (f.Contains("_hai_")) return "Hair texture";
+            if (f.Contains("_fac_")) return "Face texture";
+            if (f.Contains("_ear_")) return "Ear texture";
+            if (f.Contains("_cas_")) return "Cast body texture";
+
+            // Face feature specifics
+            if (f.Contains("eye") && !f.Contains("brow") && !f.Contains("lash"))
+                return "Eye iris texture";
+            if (f.Contains("eyebrow") || f.Contains("brow"))
+                return "Eyebrow texture";
+            if (f.Contains("eyelash") || f.Contains("lash"))
+                return "Eyelash texture";
+            if (f.Contains("lip"))
+                return "Lip texture";
+            if (f.Contains("skin") || f.Contains("face"))
+                return "Skin / face texture";
+            if (f.Contains("xnf") || f.Contains("xng"))
+                return "Face feature preset (RIPC)";
+
+            return "Texture";
         }
 
         // -----------------------------------------------------------------------
-        // Fallback hex-dump
+        // Fallback — shown when the file has no renderable pixel data.
+        //
+        // Hides all controls that only make sense with an actual image (zoom,
+        // import/export buttons, palette strip) and shows a plain centred
+        // explanation in the Current View area instead of a hex dump.
         // -----------------------------------------------------------------------
 
         private void ShowFallback(string reason, byte[] raw)
         {
+            // Clear the info row
             labelPixelFormatValue.Text = "-";
             labelTextureFormatValue.Text = "-";
             labelImageSizeValue.Text = "-";
 
-            var hexBox = new RichTextBox
+            // Hide controls that require a renderable image
+            groupBoxTexture.Visible = false;   // Import / Export / Copy / Export Palette
+            zoomTrackBar.Visible = false;
+            labelZoom.Visible = false;
+            zoomValueLabel.Visible = false;
+            labelPaletteTitle.Visible = false;
+            palettePanel.Visible = false;
+
+            var msgLabel = new Label
             {
                 Dock = DockStyle.Fill,
-                ReadOnly = true,
-                Font = new Font(FontFamily.GenericMonospace, 8.5f),
-                WordWrap = false,
-                BackColor = Color.White,
-                Text = (raw == null || raw.Length == 0)
-                                ? "No raw bytes.\r\nReason: " + reason
-                                : "Reason: " + reason + "\r\n" + new string('-', 50) + "\r\n"
-                                  + BuildHexDump(raw)
+                Text = reason,
+                ForeColor = Color.Firebrick,
+                Font = new Font(FontFamily.GenericSansSerif, 9f),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Padding = new Padding(12),
             };
-
             scrollPanel.Controls.Clear();
-            scrollPanel.Controls.Add(hexBox);
-        }
-
-        private static string BuildHexDump(byte[] data)
-        {
-            const int bpr = 16, max = 64 * 1024;
-            int count = Math.Min(data.Length, max);
-            var sb = new StringBuilder(count * 4);
-            for (int rs = 0; rs < count; rs += bpr)
-            {
-                sb.Append(rs.ToString("X8")).Append("  ");
-                for (int col = 0; col < bpr; col++)
-                {
-                    int idx = rs + col;
-                    sb.Append(idx < count ? data[idx].ToString("X2") + " " : "   ");
-                    if (col == 7) sb.Append(' ');
-                }
-                sb.Append(' ');
-                for (int col = 0; col < bpr; col++)
-                {
-                    int idx = rs + col;
-                    if (idx >= count) break;
-                    byte b = data[idx];
-                    sb.Append(b >= 0x20 && b < 0x7F ? (char)b : '.');
-                }
-                sb.Append("\r\n");
-            }
-            return sb.ToString();
+            scrollPanel.Controls.Add(msgLabel);
         }
     }
 }

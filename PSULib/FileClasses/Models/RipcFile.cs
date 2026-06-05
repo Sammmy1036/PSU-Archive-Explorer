@@ -8,10 +8,9 @@ using System.Text;
 namespace PSULib.FileClasses.Models
 {
     /// <summary>
-    /// Parsed RIPC face-feature texture file.
+    /// Parsed RIPC texture files stored in .bin.
     ///
-    /// RIPC is a paletted (8bpp indexed) texture used by PSU for face
-    /// customisation — eye irises, eyebrows, eyelashes, skin tones etc.
+    /// RIPC is a paletted (8bpp indexed) texture used by PSU.
     ///
     /// Layout:
     ///   [0x00] "RIPC" magic (4)
@@ -58,7 +57,7 @@ namespace PSULib.FileClasses.Models
 
             if (rawData == null || rawData.Length < 32)
             {
-                ParseError = "rawData too short to be a RIPC file.";
+                ParseError = "rawData too short to be RIPC.";
                 return;
             }
 
@@ -101,7 +100,7 @@ namespace PSULib.FileClasses.Models
             int ihPos = imgHdrOffset + 16;
             if ((fileChunks & 1) == 0 || ihPos + 12 > d.Length)
             {
-                ParseWarning = "No image section present in this RIPC file.";
+                ParseWarning = "No image data present in this file.";
                 return;
             }
 

@@ -74,13 +74,14 @@ namespace psu_archive_explorer
             // Unwrap it here so all downstream code sees the plain FileTreeNodeTag,
             // and capture the original index before we lose it.
             int? filteredOriginalIndex = null;
+            object effectiveTag = e.Node.Tag;
             if (e.Node.Tag is FilteredNodeTag fnt)
             {
                 filteredOriginalIndex = fnt.OriginalIndex;
-                e.Node.Tag = fnt.OriginalTag;
+                effectiveTag = fnt.OriginalTag;   // read the inner tag without touching the node
             }
 
-            if (!(e.Node.Tag is FileTreeNodeTag tag))
+            if (!(effectiveTag is FileTreeNodeTag tag))
                 return;
 
             // Standalone .adx on disk route to ADX preview
