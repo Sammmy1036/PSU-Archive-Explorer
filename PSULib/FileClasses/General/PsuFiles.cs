@@ -156,6 +156,12 @@ namespace PSULib.FileClasses.General
                     return new XncfFile(filename, rawData, inHeader, ptrs, baseAddr);
                 else if (parseScripts && (filename.Contains("script.bin") || filename.Contains("Tutor.bin")))
                     return new ScriptFile(filename, rawData, bigEndian);
+                else if (rawData.Length >= 4 && Encoding.ASCII.GetString(rawData, 0, 4) == "RIPC")
+                {
+                    RipcFile ripc = new RipcFile(rawData, filename);
+                    ripc.filename = filename;
+                    return ripc;
+                }
                 else if ((filename.EndsWith(".k") || filename.Contains(".bin")) && BitConverter.ToInt32(rawData, 0) == rawData.Length && new string(Encoding.ASCII.GetChars(rawData, 0, 4)) != "RIPC")
                     return new TextFile(filename, rawData);
                 else if (filename.Contains("item00ValueData"))
@@ -219,6 +225,7 @@ namespace PSULib.FileClasses.General
                 {
                     return new PartsInfoFile(filename, rawData, inHeader, ptrs, baseAddr);
                 }
+
             }
             catch (Exception)
             {

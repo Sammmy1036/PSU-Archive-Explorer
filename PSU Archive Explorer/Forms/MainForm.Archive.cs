@@ -744,6 +744,10 @@ namespace psu_archive_explorer
             {
                 toAdd = new LndCommonEditor(lndCommonFile);
             }
+            else if (toRead is RipcFile ripcFile)
+            {
+                toAdd = new RipcFileViewer(ripcFile);
+            }
             else if (toRead is UnpointeredFile unpointeredFile)
             {
                 // ADX interception — if this UnpointeredFile is an archive-embedded

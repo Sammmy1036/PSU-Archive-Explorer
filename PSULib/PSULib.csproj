@@ -73,6 +73,7 @@
     <Compile Include="FileClasses\Maps\LndEffectFile.cs" />
     <Compile Include="FileClasses\Maps\LndEnemyLightFile.cs" />
     <Compile Include="FileClasses\Missions\Sets\DefaultEnemyText.cs" />
+    <Compile Include="FileClasses\Models\RipcFile.cs" />
     <Compile Include="FileClasses\Models\XncfFile.cs" />
     <Compile Include="FileClasses\Models\XncpFile.cs" />
     <Compile Include="FileClasses\Characters\PartsInfoFile.cs" />

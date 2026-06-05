@@ -417,6 +417,12 @@
     <Compile Include="Forms\FileViewers\QuestListViewer.Designer.cs">
       <DependentUpon>QuestListViewer.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FileViewers\RipcFileViewer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Forms\FileViewers\RipcFileViewer.designer.cs">
+      <DependentUpon>RipcFileViewer.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FileViewers\RmagBulletViewer.cs">
       <SubType>UserControl</SubType>
     </Compile>
