@@ -200,20 +200,7 @@ namespace psu_archive_explorer
                             addChildFiles(treeNodeCollection, loadedContainer);
                             isValidArchive = true;
  
-                            // If the AFS is purely audio/video (every entry is .adx
-                            // or .sfd), the toolbar's edit operations (Set Quest /
-                            // Add File / Set Zone / Add Zone / Zone selector) don't
-                            // apply — those are meaningful only against a real game
-                            // AFS containing zones and quest data. Downgrade the
-                            // enabled state we just set so the user doesn't see
-                            // clickable buttons that would corrupt the file.
-                            //
-                            // Filename-only check (no content sniffing) because
-                            // large audio AFS containers can have hundreds of
-                            // entries and we don't want to pay a per-entry byte
-                            // read on archive open. Hash-named ADX/SFD entries
-                            // without an extension would slip through, but real
-                            // AFS files in this game use proper filenames inside.
+                            
                             if (IsAllAdxOrSfdAfs(loadedContainer))
                             {
                                 setAFSEnabled(false);
