@@ -104,15 +104,18 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **SFD**   | Video/cutscene files |
 | **PSO**   | Compiled Pixel Shader Object |
 | **VSO**   | Compiled Vertex Shader Object |
-| **XNA**   | Bone/skeleton name files |
+| **XNA**   | Bone/skeleton name files and various data for switches, breakable objects, and NPCs |
 | **XNCP**  | UI layout and control files (HUD, menus, interfaces) |
 | **XNCF**  | Bitmap font tables that map characters to subimages in a paired XNCP atlas (HUD, menus, interfaces) |
+| **XND**   | Camera files |
 | **XNF**   | Sega Ninja Next framework skeletal animation or morph motion files |
 | **XNG**   | Sega Ninja Next framework cage model files |
+| **XNI**   | Light Particles |
 | **XNJ**   | 3D model files, Actual Bones/Skeleton |
-| **XNM**   | Model material and mesh data (usually paired with XNJ) |
+| **XNM**   | Model material and mesh data (usually paired with XNJ), possibly also animation files |
 | **XNR**   | Parameter/data table files (UI/HUD Scaling, item stats, weapons, enemy drops, skills, technics, AI, etc.) |
 | **XNT**   | Texture list / material mapping files (links texture slots in models to actual XVR textures) |
+| **XNV**   | Special effect generation files |
 | **XVR**   | Texture files (characters, environments, UI, etc.) |
 
 **Locating string text in the game has also been indexed similarly to the psu_file_index.gz file. However, the string index file has not been uploaded to GitHub due to the size being nearly 500 MB. Please reach out if you would like a copy of this index file.**
