@@ -79,7 +79,8 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Updated PSULib to now support multiple new file formats
 
 ### Upcoming Features
-RIPC texture viewer with live palette editing, zoom, import/export (PNG, BMP, ACT), and clipboard support
+- Further parsing enhancements for other file formats
+- RIPC texture viewer with live palette editing, zoom, import/export (PNG, BMP, ACT), and clipboard support
 <img src="Images/RIPC Preview.png" width="800">
 
 ## How to Use the PSU Archive Explorer
