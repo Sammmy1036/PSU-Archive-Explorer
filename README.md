@@ -79,6 +79,7 @@ If you want to edit audio files which are packed in .dat files, it is recommende
 - Updated PSULib to now support multiple new file formats
 
 ### Upcoming Features
+- Possible XNM animation viewer (right now in a very rigid/janky state)
 - Further parsing enhancements for other file formats
 - RIPC texture viewer with live palette editing, zoom, import/export (PNG, BMP, ACT), and clipboard support
 <img src="Images/RIPC Preview.png" width="800">
@@ -112,7 +113,7 @@ Mods you create should be placed in the **Addon** folder and they will automatic
 | **XNG**   | Sega Ninja Next framework cage model files |
 | **XNI**   | Light Particles |
 | **XNJ**   | 3D model files, Actual Bones/Skeleton |
-| **XNM**   | Model material and mesh data (usually paired with XNJ), possibly also animation files |
+| **XNM**   | Model material, mesh data (usually paired with XNJ), animation files |
 | **XNR**   | Parameter/data table files (UI/HUD Scaling, item stats, weapons, enemy drops, skills, technics, AI, etc.) |
 | **XNT**   | Texture list / material mapping files (links texture slots in models to actual XVR textures) |
 | **XNV**   | Special effect generation files |
